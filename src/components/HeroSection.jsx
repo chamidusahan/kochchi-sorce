@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
 
 const HeroSection = () => {
   const [isHovered, setIsHovered] = useState(false);
@@ -38,7 +38,7 @@ const HeroSection = () => {
             transition={{
               repeat: Infinity,
               duration: 15 + Math.random() * 20,
-              ease: 'easeInOut',
+              ease: "easeInOut",
             }}
           >
             <img
@@ -75,7 +75,7 @@ const HeroSection = () => {
             transition={{
               repeat: Infinity,
               duration: 20 + Math.random() * 15,
-              ease: 'easeInOut',
+              ease: "easeInOut",
             }}
           >
             <img
@@ -131,12 +131,12 @@ const HeroSection = () => {
           <motion.div
             className="relative w-64 h-64 md:w-80 md:h-80"
             animate={{ rotate: isHovered ? 360 : 0 }}
-            transition={{ duration: 1.5, ease: 'easeInOut' }}
+            transition={{ duration: 1.5, ease: "easeInOut" }}
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
           >
             <img
-              src="src\images\product.jpg"
+              src="src/images/product.jpg"
               alt="Spice Up Hot Sauce Bottle"
               className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,0,0,0.5)]"
             />

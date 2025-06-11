@@ -141,10 +141,8 @@ const ContactSection = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-16 pt-8 border-t border-gray-800">
-          <div className="text-center text-gray-400">
-            <p>© {new Date().getFullYear()} Spice Up. All rights reserved.</p>
-          </div>
+        <div className="mt-16 border-t border-gray-800">
+        
         </div>
       </div>
     </section>

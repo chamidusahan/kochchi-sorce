@@ -9,7 +9,7 @@ const products = [
     name: 'Classic Heat',
     size: '250ml',
     price: 1100,
-    image: 'src/images/productinfo.jpg',
+    image: 'public/images/productinfo.jpg',
     description: 'Our signature hot sauce with the perfect balance of heat and flavor',
   },
   {

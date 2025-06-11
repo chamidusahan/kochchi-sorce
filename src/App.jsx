@@ -5,6 +5,7 @@ import AboutSection from './components/AboutSection';
 import ProductsSection from './components/ProductsSection';
 import DeliverySection from './components/DeliverySection';
 import ContactSection from './components/ContactSection';
+import Footer from './components/Footer';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <ProductsSection />
         <DeliverySection />
         <ContactSection />
+        <Footer/>
       </main>
     </div>
   );

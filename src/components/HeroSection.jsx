@@ -136,7 +136,7 @@ const HeroSection = () => {
             onHoverEnd={() => setIsHovered(false)}
           >
             <img
-              src="public\images\product.jpg"
+              src="public\images\product1.png"
               alt="Spice Up Hot Sauce Bottle"
               className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,0,0,0.5)]"
             />

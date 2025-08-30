@@ -1,6 +1,4 @@
-import { Auth } from "@supabase/auth-ui-react";
-import { ThemeSupa } from "@supabase/auth-ui-shared";
-import { supabase } from "../supabaseClient";
+
 import { X } from "lucide-react";
 
 const LoginPage = ({ onClose }) => {

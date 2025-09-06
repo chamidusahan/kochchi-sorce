@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, User, LogOut } from "lucide-react";
+import { Flame, User, LogOut, X } from "lucide-react";
 
 
 
@@ -51,15 +51,25 @@ const Navbar = () => {
 
         {/* Mobile Menu Button */}
         <div className="md:hidden">
-          <button
-            className="p-2 focus:outline-none"
-            aria-label="Open menu"
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            <div className="w-6 h-0.5 bg-white mb-1.5"></div>
-            <div className="w-6 h-0.5 bg-white mb-1.5"></div>
-            <div className="w-6 h-0.5 bg-white"></div>
-          </button>
+          {!mobileOpen ? (
+            <button
+              className="p-2 focus:outline-none"
+              aria-label="Open menu"
+              onClick={() => setMobileOpen(true)}
+            >
+              <div className="w-6 h-0.5 bg-white mb-1.5"></div>
+              <div className="w-6 h-0.5 bg-white mb-1.5"></div>
+              <div className="w-6 h-0.5 bg-white"></div>
+            </button>
+          ) : (
+            <button
+              className="p-2 focus:outline-none"
+              aria-label="Close menu"
+              onClick={() => setMobileOpen(false)}
+            >
+              <X size={28} className="text-white" />
+            </button>
+          )}
         </div>
         {/* Mobile Menu Drawer */}
         <AnimatePresence>

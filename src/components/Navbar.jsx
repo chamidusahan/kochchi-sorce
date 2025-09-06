@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Flame, User, LogOut } from "lucide-react";
-import { supabase } from "../supabaseClient"; // make sure this file exists and is configured
-import LoginPage from "./LoginPage";
+
+
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   // Track scroll position
   useEffect(() => {
@@ -16,34 +18,7 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Get user session from Supabase
-  useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    getUser();
 
-    // Also listen to auth state changes (auto update after login/logout)
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({ provider: "google" });
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
 
   return (
     <nav
@@ -71,28 +46,44 @@ const Navbar = () => {
           ))}
 
           {/* Auth Button */}
-          {user ? (
-            <button
-              onClick={handleLogout}
-              className="flex items-center text-white hover:text-red-400"
-            >
-              <LogOut className="mr-1" /> 
-            </button>
-          ) : (
-            <a href="/login">
-              <User className="text-white hover:text-red-500 transition-colors" /> 
-            </a>
-          )}
+          
         </div>
 
-        {/* Mobile Menu Placeholder */}
+        {/* Mobile Menu Button */}
         <div className="md:hidden">
-          <button className="p-2">
+          <button
+            className="p-2 focus:outline-none"
+            aria-label="Open menu"
+            onClick={() => setMobileOpen((v) => !v)}
+          >
             <div className="w-6 h-0.5 bg-white mb-1.5"></div>
             <div className="w-6 h-0.5 bg-white mb-1.5"></div>
             <div className="w-6 h-0.5 bg-white"></div>
           </button>
         </div>
+        {/* Mobile Menu Drawer */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+              className="md:hidden absolute top-full left-0 w-full bg-black/95 z-40 flex flex-col items-center space-y-6 py-8 shadow-lg"
+            >
+              {["Home", "About", "Products", "Order Now", "Contact"].map((item) => (
+                <a
+                  key={item}
+                  href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
+                  className="text-lg font-semibold text-white hover:text-red-500 transition-colors"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {item}
+                </a>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </nav>
   );

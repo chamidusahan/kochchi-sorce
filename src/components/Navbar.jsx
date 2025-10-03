@@ -34,7 +34,7 @@ const Navbar = () => {
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex space-x-8 items-center">
+        <div className="hidden md:flex space-x-6 items-center">
           {["Home", "About", "Products", "Order Now", "Contact"].map((item) => (
             <a
               key={item}
@@ -45,8 +45,27 @@ const Navbar = () => {
             </a>
           ))}
 
-          {/* Auth Button */}
-          
+          {/* Login icon - show User when logged out, LogOut when logged in */}
+          <div className="flex items-center">
+            {!user ? (
+              <button
+                aria-label="Log in"
+                className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                onClick={() => setUser({ name: "Guest" })}
+              >
+                <User size={20} className="text-white" />
+              </button>
+            ) : (
+              <button
+                aria-label="Log out"
+                className="p-2 rounded-full hover:bg-white/10 transition-colors flex items-center space-x-2"
+                onClick={() => setUser(null)}
+              >
+                <LogOut size={18} className="text-white" />
+                <span className="text-sm text-white">Sign out</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Mobile Menu Button */}
@@ -81,7 +100,7 @@ const Navbar = () => {
               transition={{ duration: 0.5, ease: "easeInOut" }}
               className="md:hidden absolute top-full left-0 w-full bg-black/95 z-40 flex flex-col items-center space-y-6 py-8 shadow-lg"
             >
-              {["Home", "About", "Products", "Order Now", "Contact"].map((item) => (
+              {["Home", "About", "Products", "Order Now", "Contact", "Login"].map((item) => (
                 <a
                   key={item}
                   href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}

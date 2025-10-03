@@ -89,7 +89,7 @@ const HeroSection = () => {
 
       {/* Hero Content */}
       <div className="container mx-auto px-4 h-full flex flex-col md:flex-row items-center justify-center pt-16">
-        <div className="md:w-1/2 z-10 space-y-6 text-center md:text-left">
+        <div className="md:w-1/2 z-10 space-y-6 text-center md:text-left md:pl-8 lg:pl-12">
           <motion.h1
             className="text-4xl md:text-6xl lg:text-7xl font-extrabold"
             initial={{ opacity: 0, y: 20 }}

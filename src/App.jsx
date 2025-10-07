@@ -11,6 +11,7 @@ import ProductsSection from './components/ProductsSection';
 import DeliverySection from './components/DeliverySection';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
+import LoginSignup from "./pages/LoginSignup";
 
 
 function App() {
@@ -27,9 +28,10 @@ function App() {
                 <ProductsSection />
                 <DeliverySection />
                 <ContactSection />
-                <Footer />
+                <Footer />                
               </>
             } />
+						<Route path="/login" element={<LoginSignup />} />
           </Routes>
         </main>
       </div>

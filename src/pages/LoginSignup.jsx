@@ -1,6 +1,7 @@
 
 
   import React, { useState } from "react";
+  import { motion } from "framer-motion";
   import { Flame } from "lucide-react";
   
 const LoginSignup = () => {
@@ -8,9 +9,6 @@ const LoginSignup = () => {
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
   const [message, setMessage] = useState(null);
 
-
-
-  
 
     const onChange = (e) => {
       const { name, value } = e.target;
@@ -38,10 +36,16 @@ const LoginSignup = () => {
     };
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-black via-gray-900 to-gray-800">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 10 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-black via-black to-red-950"
+      >
         <div className="w-full max-w-5xl flex flex-col md:flex-row rounded-xl overflow-hidden shadow-2xl">
           {/* Left side - brand / marketing */}
-          <aside className="hidden md:flex flex-1 flex-col justify-center gap-6 p-10 bg-gradient-to-b from-black to-gray-900 text-white">
+          <aside className="hidden md:flex flex-1 flex-col justify-center gap-6 p-10 bg-gradient-to-b from-black to-red-900 text-white">
             <div className="flex items-center gap-3">
               <Flame size={36} className="text-red-500" />
               <h2 className="text-2xl font-bold tracking-wider text-red-500">SPICE UP</h2>
@@ -59,7 +63,7 @@ const LoginSignup = () => {
                 type="button"
                 className="inline-flex items-center gap-2 bg-white text-black rounded-lg px-3 py-2 shadow-sm"
                 aria-label="Sign in with Google"
-                onClick={() => setMessage({ type: 'info', text: 'Google sign-in clicked (placeholder)' })}
+                
               >
                 {/* Google svg */}
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.35 11.1H12v2.8h5.4c-.25 1.4-1.1 2.6-2.35 3.4v2.8h3.8C20.7 19.6 22 15.8 22 12c0-.6-.05-1.2-.15-1.8z" fill="#4285F4"/><path d="M12 22c2.7 0 4.95-.9 6.6-2.45l-3.8-2.8c-1.05.7-2.4 1.1-3.8 1.1-2.9 0-5.35-1.95-6.22-4.6H1.94v2.9C3.6 19.9 7.45 22 12 22z" fill="#34A853"/><path d="M5.78 13.25A7.01 7.01 0 015.5 12c0-.4.04-.8.13-1.2V8.9H1.94A10 10 0 001 12c0 1.6.35 3.1.94 4.45l3.84-3.2z" fill="#FBBC05"/><path d="M12 4.5c1.5 0 2.9.55 4 1.65L19.8 3.6C17.95 1.9 15.7 1 12 1 7.45 1 3.6 3.1 1.94 6.5l3.84 2.9C6.65 6.45 9.1 4.5 12 4.5z" fill="#EA4335"/></svg>
@@ -70,7 +74,7 @@ const LoginSignup = () => {
                 type="button"
                 className="inline-flex items-center gap-2 bg-blue-600 text-white rounded-lg px-3 py-2 shadow-sm"
                 aria-label="Sign in with Facebook"
-                onClick={() => setMessage({ type: 'info', text: 'Facebook sign-in clicked (placeholder)' })}
+                
               >
                 {/* Facebook svg */}
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 12.07C22 6.48 17.52 2 12 2S2 6.48 2 12.07c0 4.98 3.66 9.1 8.44 9.95v-7.05H8.07v-2.9h2.37V9.41c0-2.34 1.4-3.63 3.54-3.63 1.02 0 2.09.18 2.09.18v2.3h-1.17c-1.15 0-1.5.72-1.5 1.46v1.74h2.55l-.41 2.9h-2.14V22C18.34 21.17 22 17.05 22 12.07z" fill="#fff"/></svg>
@@ -121,7 +125,7 @@ const LoginSignup = () => {
             </form>
           </main>
         </div>
-      </div>
+      </motion.div>
     );
   };
 

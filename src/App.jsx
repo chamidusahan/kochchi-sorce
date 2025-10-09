@@ -12,6 +12,7 @@ import DeliverySection from './components/DeliverySection';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
 import LoginSignup from "./pages/LoginSignup";
+import OrderNow from "./pages/OrderNow";
 
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
               </>
             } />
 						<Route path="/login" element={<LoginSignup />} />
+						<Route path="/order" element={<OrderNow />} />
           </Routes>
         </main>
       </div>

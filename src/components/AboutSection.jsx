@@ -94,7 +94,7 @@ const AboutSection = () => {
                 href="#products"
                 className="inline-flex items-center space-x-2 font-bold text-red-500 group-hover:text-red-400 transition-colors"
               >
-                <span>Discover our products</span>
+                <span>Discover More</span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="20"

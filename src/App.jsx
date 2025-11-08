@@ -9,6 +9,7 @@ import HeroSection from './components/HeroSection';
 import AboutSection from './components/AboutSection';
 import ProductsSection from './components/ProductsSection';
 import DeliverySection from './components/DeliverySection';
+import RatingsSection from './components/RatingsSection';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
 import LoginSignup from "./pages/LoginSignup";
@@ -30,6 +31,7 @@ function App() {
               <AboutSection />
               <ProductsSection />
               <DeliverySection />
+              <RatingsSection />
               <ContactSection />
               <Footer />                
             </>

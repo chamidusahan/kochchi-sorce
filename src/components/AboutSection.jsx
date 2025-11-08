@@ -4,7 +4,7 @@ import { Leaf, Flame } from 'lucide-react';
 
 const AboutSection = () => {
   return (
-    <section id="about" className="py-20 bg-gradient-to-b from-black to-red-950">
+  <section id="about" className="py-20 bg-gradient-to-b from-black via-black to-red-950">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 30 }}

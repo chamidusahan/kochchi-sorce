@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -19,11 +19,13 @@ const RatingsSection = () => {
   const [hoverValue, setHoverValue] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [isInView, setIsInView] = useState(false);
+  const [isInView, setIsInView] = useState(true);
   const [isHovering, setIsHovering] = useState(false);
-  const marqueeRef = useRef(null);
+  const carouselRef = useRef(null);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [cycle, setCycle] = useState(0);
 
   // Fetch session + existing ratings
   useEffect(() => {
@@ -48,16 +50,48 @@ const RatingsSection = () => {
     fetchAll();
   }, []);
 
-  // Observe viewport visibility to pause/resume marquee
+  // Observe viewport visibility to pause/resume carousel auto-play
   useEffect(() => {
-    const el = marqueeRef.current;
+    const el = carouselRef.current;
     if (!el) return;
+
     const obs = new IntersectionObserver((entries) => {
       setIsInView(entries[0]?.isIntersecting ?? false);
-    }, { root: null, threshold: 0.1 });
+    }, { root: null, threshold: 0.2 });
+
     obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+
+    return () => {
+      obs.disconnect();
+    };
+  }, [ratings.length]);
+
+  // Auto advance reviews when in view and not hovering
+  useEffect(() => {
+    if (!ratings.length) return;
+    if (!isInView || isHovering) return;
+    const timer = setInterval(() => {
+      setCurrentIndex((idx) => {
+        if (ratings.length <= 1) {
+          return idx;
+        }
+        return (idx + 1) % ratings.length;
+      });
+      setCycle((prev) => prev + 1);
+    }, 6500);
+    return () => clearInterval(timer);
+  }, [ratings.length, isInView, isHovering]);
+
+  // Reset to newest review when list changes (e.g., submit/delete)
+  useEffect(() => {
+    if (!ratings.length) {
+      setCurrentIndex(0);
+      setCycle(0);
+      return;
+    }
+    setCurrentIndex((idx) => (idx >= ratings.length ? ratings.length - 1 : idx));
+    setCycle(0);
+  }, [ratings]);
 
   // Helper to refresh ratings from server
   const refreshRatings = async () => {
@@ -99,7 +133,7 @@ const RatingsSection = () => {
       const data = await res.json();
       if (data.success) {
         // Optimistically prepend new rating
-        setRatings(prev => [data.rating, ...prev]);
+  setRatings(prev => [data.rating, ...prev]);
         setRatingValue(0);
         setComment('');
         // Then refresh from server to ensure canonical ordering
@@ -131,6 +165,8 @@ const RatingsSection = () => {
       const data = await res.json();
       if (data.success) {
         setRatings(prev => prev.filter(r => r.id !== id));
+        setCurrentIndex((idx) => (idx > 0 ? idx - 1 : 0));
+        setCycle((prev) => prev + 1);
       } else {
         alert(data.message || 'Failed to delete review');
       }
@@ -150,7 +186,7 @@ const RatingsSection = () => {
   };
 
   return (
-    <section id="ratings" className="py-16 bg-black/90 text-white relative overflow-hidden">
+  <section id="ratings" className="py-16 bg-gradient-to-b from-black via-black to-red-950 text-white relative overflow-hidden">
       <div className="container mx-auto px-4">
         <motion.h2
           className="text-3xl md:text-4xl font-extrabold mb-8 text-center"
@@ -219,83 +255,106 @@ const RatingsSection = () => {
           <p className="text-center text-gray-400">No reviews yet. Be the first!</p>
         ) : (
           <div
-            className="relative overflow-hidden"
+            className="relative flex flex-col items-center gap-6"
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
-            ref={marqueeRef}
+            ref={carouselRef}
           >
-            <div
-              className={`marquee-track flex-nowrap items-stretch gap-6 pb-4 min-w-0 ${isHovering || !isInView ? 'marquee-paused' : 'marquee-normal'}`}
-              style={{ animationDuration: `${Math.max(18, ratings.length * 3)}s` }}
-            >
-              {/* Duplicate ratings for seamless infinite loop (scroll width = 50%) */}
-              {[...ratings, ...ratings].map((r, idx) => {
-                const fn = r.first_name || r.user_first_name || '';
-                const ln = r.last_name || r.user_last_name || '';
+            <AnimatePresence mode="wait">
+              {(() => {
+                const review = ratings[currentIndex];
+                if (!review) return null;
+                const fn = review.first_name || review.user_first_name || '';
+                const ln = review.last_name || review.user_last_name || '';
                 const displayName = fn ? `${fn}${ln ? ' ' + ln.charAt(0) + '.' : ''}` : 'Anonymous';
                 const initial = (fn || 'A').charAt(0).toUpperCase();
-                const profilePic = r.profile_pic;
-                
+                const profilePic = review.profile_pic;
+
                 return (
                   <motion.div
-                    key={`${r.id || idx}-${idx}`}
-                    className="flex-shrink-0 w-[500px]"
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
+                    key={`${review.id || `review-${currentIndex}`}-${cycle}`}
+                    initial={{ opacity: 0, scale: 0.92, y: 30 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -25 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    className="relative w-full max-w-3xl"
                   >
-                    <div className="h-full p-8 rounded-3xl bg-gradient-to-br from-red-950/40 via-black to-red-900/30 border border-red-700/40 shadow-xl backdrop-blur-sm hover:shadow-red-900/40 hover:scale-[1.02] transition-all duration-300">
-                      {/* Top: Avatar & Name */}
-                      <div className="flex items-center gap-4 mb-6">
+                    <div className="relative z-10 p-10 rounded-3xl border border-red-700/40 bg-gradient-to-br from-red-950/70 via-black/90 to-black/80 shadow-[0_40px_120px_-60px_rgba(255,64,64,0.6)]">
+                      <div className="absolute -top-12 left-10 hidden md:block">
+                        <motion.span
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+                          className="text-6xl text-red-700/70"
+                        >
+                          “
+                        </motion.span>
+                      </div>
+
+                      <div className="flex flex-col md:flex-row md:items-start md:gap-6">
                         {profilePic ? (
                           <img
                             src={profilePic}
                             alt={displayName}
-                            className="w-16 h-16 rounded-full object-cover border-2 border-red-500/60 shadow-lg"
+                            className="w-20 h-20 rounded-full object-cover border-2 border-red-500/60 shadow-lg"
                           />
                         ) : (
-                          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg ${getAvatarColor(initial)}`}>
+                          <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg ${getAvatarColor(initial)}`}>
                             {initial}
                           </div>
                         )}
-                        <div className="flex-1">
-                          <p className="font-semibold text-white text-base">{displayName}</p>
-                          {r.created_at && (
-                            <p className="text-sm text-red-300/70">{new Date(r.created_at).toLocaleDateString()}</p>
+                        <div className="mt-6 md:mt-0 space-y-4">
+                          <div>
+                            <p className="font-semibold text-lg text-white">{displayName}</p>
+                            {review.created_at && (
+                              <p className="text-sm text-red-200/70">{new Date(review.created_at).toLocaleDateString()}</p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: review.rating }).map((_, i) => (
+                              <Star key={i} size={22} className="text-yellow-400 fill-yellow-400" />
+                            ))}
+                            {Array.from({ length: 5 - review.rating }).map((_, i) => (
+                              <Star key={`empty-${i}`} size={22} className="text-gray-700" />
+                            ))}
+                          </div>
+
+                          <p className="text-base md:text-lg text-gray-200 leading-relaxed">
+                            {review.comment}
+                          </p>
+
+                          {user?.isAdmin && review.id && (
+                            <button
+                              onClick={() => handleDelete(review.id)}
+                              className="text-xs px-3 py-1 rounded-full bg-red-700 hover:bg-red-800 text-white font-medium transition-colors"
+                            >
+                              Delete
+                            </button>
                           )}
                         </div>
                       </div>
-                      
-                      {/* Stars */}
-                      <div className="flex items-center gap-1 mb-4">
-                        {Array.from({ length: r.rating }).map((_, i) => (
-                          <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
-                        ))}
-                        {Array.from({ length: 5 - r.rating }).map((_, i) => (
-                          <Star key={'empty-'+i} size={20} className="text-gray-700" />
-                        ))}
-                      </div>
-                      
-                      {/* Comment */}
-                      <p className="text-base text-gray-200 leading-relaxed line-clamp-4 mb-4">{r.comment}</p>
-                      {/* Admin Delete (placeholder condition: user && user.isAdmin) */}
-                      {user?.isAdmin && r.id && (
-                        <button
-                          onClick={() => handleDelete(r.id)}
-                          className="text-xs px-3 py-1 rounded-full bg-red-700 hover:bg-red-800 text-white font-medium transition-colors"
-                        >
-                          Delete
-                        </button>
-                      )}
                     </div>
+
+                    {/* Floating glow accent */}
+                    <div className="absolute inset-0 blur-3xl bg-red-600/20 -z-10 translate-y-6" />
                   </motion.div>
                 );
-              })}
+              })()}
+            </AnimatePresence>
+
+            {/* Navigation Dots */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {ratings.map((r, idx) => (
+                <button
+                  key={r.id || idx}
+                  onClick={() => {
+                    setCurrentIndex(idx);
+                    setCycle((prev) => prev + 1);
+                  }}
+                  className={`h-2.5 rounded-full transition-all ${idx === currentIndex ? 'w-8 bg-red-500' : 'w-2 bg-red-500/40 hover:bg-red-400/60'}`}
+                />
+              ))}
             </div>
-            
-            {/* Gradient fade edges */}
-            <div className="pointer-events-none absolute top-0 left-0 h-full w-20 bg-gradient-to-r from-black/90 to-transparent" />
-            <div className="pointer-events-none absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-black/90 to-transparent" />
           </div>
         )}
       </div>

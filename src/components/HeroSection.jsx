@@ -10,7 +10,7 @@ const HeroSection = () => {
   return (
     <section
       id="home"
-      className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-black via-black to-red-950"
+  className="relative h-screen w-full overflow-hidden bg-gradient-to-b from-black via-black to-red-950"
     >
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">

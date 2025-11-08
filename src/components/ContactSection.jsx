@@ -4,7 +4,7 @@ import { Phone, Mail, MapPin, Facebook, Instagram, Twitter } from 'lucide-react'
 
 const ContactSection = () => {
   return (
-    <section id="contact" className="py-20 bg-black relative">
+  <section id="contact" className="py-20 bg-gradient-to-b from-black via-black to-red-950 relative">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')] opacity-10"></div>
       <div className="container mx-auto px-4 relative z-10">
         <motion.div

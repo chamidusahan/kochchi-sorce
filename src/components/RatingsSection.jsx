@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion'; // Still used for subtle fade/entrance
+import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 // Assumptions:
 // - Backend endpoints exist at:
@@ -14,7 +15,6 @@ const RatingsSection = () => {
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
   const [ratingValue, setRatingValue] = useState(0);
   const [hoverValue, setHoverValue] = useState(0);
   const [comment, setComment] = useState('');
@@ -23,19 +23,12 @@ const RatingsSection = () => {
   const [isHovering, setIsHovering] = useState(false);
   const marqueeRef = useRef(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Fetch session + existing ratings
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const sessionRes = await fetch('http://localhost/backend/user/check-session.php', {
-          method: 'GET',
-          credentials: 'include'
-        });
-        const sessionData = await sessionRes.json();
-        if (sessionData.authenticated) {
-          setUser(sessionData.user);
-        }
         const ratingsRes = await fetch(`http://localhost/backend/user/get-ratings.php?_t=${Date.now()}`, {
           method: 'GET',
           credentials: 'include'

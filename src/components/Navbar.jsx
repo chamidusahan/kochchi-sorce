@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame, User, LogOut, X } from "lucide-react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout, loading } = useAuth();
 
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Track scroll position
@@ -53,6 +54,31 @@ const Navbar = () => {
     { name: "Contact", action: () => handleScroll("contact") },
   ];
 
+  const getInitial = () => {
+    if (!user) return '';
+  const source = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email || '';
+  return source ? source.charAt(0).toUpperCase() : '?';
+  };
+
+  const renderAvatar = () => {
+    if (!user) return null;
+    if (user.profilePic) {
+      return (
+        <img
+          src={user.profilePic}
+          alt={user.firstName || user.email}
+          className="h-9 w-9 rounded-full object-cover border border-white/20"
+          referrerPolicy="no-referrer"
+        />
+      );
+    }
+    return (
+      <div className="h-9 w-9 rounded-full bg-red-600/90 text-white flex items-center justify-center text-sm font-semibold">
+        {getInitial()}
+      </div>
+    );
+  };
+
   return (
     <nav
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
@@ -83,22 +109,29 @@ const Navbar = () => {
 
           {/* Login/Logout */}
           <div className="flex items-center">
-            {!user ? (
+            {loading ? (
+              <div className="p-2">
+                <div className="h-5 w-5 border border-white/40 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : user ? (
+              <div className="flex items-center gap-3">
+                {renderAvatar()}
+                <button
+                  aria-label="Log out"
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors flex items-center space-x-2"
+                  onClick={() => logout().catch(() => {})}
+                >
+                  <LogOut size={18} className="text-white" />
+                  <span className="text-sm text-white">Sign out</span>
+                </button>
+              </div>
+            ) : (
               <button
                 aria-label="Log in"
                 className="p-2 rounded-full hover:bg-white/10 transition-colors"
                 onClick={() => navigate("/login")}
               >
                 <User size={20} className="text-white" />
-              </button>
-            ) : (
-              <button
-                aria-label="Log out"
-                className="p-2 rounded-full hover:bg-white/10 transition-colors flex items-center space-x-2"
-                onClick={() => setUser(null)}
-              >
-                <LogOut size={18} className="text-white" />
-                <span className="text-sm text-white">Sign out</span>
               </button>
             )}
           </div>
@@ -144,15 +177,32 @@ const Navbar = () => {
                   {item.name}
                 </button>
               ))}
-              <button
-                className="text-lg font-semibold text-white hover:text-red-500 transition-colors"
-                onClick={() => {
-                  setMobileOpen(false);
-                  navigate("/login");
-                }}
-              >
-                Login
-              </button>
+              {loading ? (
+                <div className="text-white/60">Loading...</div>
+              ) : user ? (
+                <div className="flex flex-col items-center gap-3">
+                  {renderAvatar()}
+                  <button
+                    className="text-lg font-semibold text-white hover:text-red-500 transition-colors"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      logout().catch(() => {});
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="text-lg font-semibold text-white hover:text-red-500 transition-colors"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    navigate("/login");
+                  }}
+                >
+                  Login
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

@@ -6,7 +6,10 @@ import {
 	Edit,
 	Trash2,
 	AlertTriangle,
-	Package
+	Package,
+	PackagePlus,
+	X,
+	ImagePlus
 } from 'lucide-react';
 
 const productSummary = [
@@ -86,7 +89,92 @@ const statusStyles = {
 };
 
 const ProductDetails = () => {
+	const [showProductModal, setShowProductModal] = React.useState(false);
+	const [showStockModal, setShowStockModal] = React.useState(false);
+	const [productForm, setProductForm] = React.useState({
+		name: '',
+		sku: '',
+		category: '',
+		status: 'Draft',
+		price: '',
+		reorderPoint: '',
+		restockTarget: '',
+		currentStock: '',
+		imageUrl: '',
+		imageFile: null,
+		imagePreview: '',
+		description: ''
+	});
+	const [stockForm, setStockForm] = React.useState({
+		productId: productList[0]?.id ?? '',
+		changeType: 'IN',
+		quantity: '',
+		unitCost: '',
+		reference: '',
+		note: ''
+	});
+
+	const statusOptions = ['Active', 'Draft', 'Low Stock', 'Archived'];
+	const changeTypes = [
+		{ value: 'IN', label: 'Incoming stock' },
+		{ value: 'OUT', label: 'Stock deduction' },
+		{ value: 'ADJUST', label: 'Manual adjustment' }
+	];
+
 	const topProducts = productList.slice(0, 3);
+	const productImageInputRef = React.useRef(null);
+
+	const handleProductChange = (event) => {
+		const { name, value } = event.target;
+		if (name === 'price') {
+			if (value === '.') {
+				setProductForm((prev) => ({ ...prev, price: '0.' }));
+				return;
+			}
+			if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+				setProductForm((prev) => ({ ...prev, price: value }));
+			}
+			return;
+		}
+		setProductForm((prev) => ({ ...prev, [name]: value }));
+	};
+
+	const handleProductImageChange = (event) => {
+		const file = event.target.files?.[0];
+		if (!file) {
+			if (productForm.imagePreview) {
+				URL.revokeObjectURL(productForm.imagePreview);
+			}
+			setProductForm((prev) => ({ ...prev, imageFile: null, imagePreview: '' }));
+			return;
+		}
+		if (productForm.imagePreview) {
+			URL.revokeObjectURL(productForm.imagePreview);
+		}
+		const previewUrl = URL.createObjectURL(file);
+		setProductForm((prev) => ({ ...prev, imageFile: file, imagePreview: previewUrl }));
+	};
+
+	React.useEffect(() => () => {
+		if (productForm.imagePreview) {
+			URL.revokeObjectURL(productForm.imagePreview);
+		}
+	}, [productForm.imagePreview]);
+
+	const handleStockChange = (event) => {
+		const { name, value } = event.target;
+		setStockForm((prev) => ({ ...prev, [name]: value }));
+	};
+
+	const handleProductSubmit = (event) => {
+		event.preventDefault();
+		// TODO: integrate with backend endpoint
+	};
+
+	const handleStockSubmit = (event) => {
+		event.preventDefault();
+		// TODO: integrate with backend endpoint
+	};
 
 	return (
 		<div className="space-y-6">
@@ -100,17 +188,36 @@ const ProductDetails = () => {
 							className="w-full bg-gray-900/70 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/70"
 						/>
 					</div>
-					<select className="bg-gray-900/70 border border-gray-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/70">
-						<option value="">All categories</option>
-						<option value="Hot Sauce">Hot Sauce</option>
-						<option value="Specialty">Specialty</option>
-						<option value="Limited">Limited</option>
+					<select
+						className="bg-gray-900/70 border border-gray-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/70"
+						style={{ backgroundColor: '#0f141c', color: '#fff' }}
+					>
+						<option value="" style={{ backgroundColor: '#0f141c', color: '#fff' }}>All categories</option>
+						<option value="Hot Sauce" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Hot Sauce</option>
+						<option value="Specialty" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Specialty</option>
+						<option value="Limited" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Limited</option>
 					</select>
 				</div>
-				<button className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-3 rounded-xl transition">
-					<Plus size={18} />
-					<span>Add Product</span>
-				</button>
+				<div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:items-center justify-end">
+					<button
+						onClick={() => {
+							setShowProductModal(true);
+						}}
+						className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-3 rounded-xl transition"
+					>
+						<Plus size={18} />
+						<span>Add Product</span>
+					</button>
+					<button
+						onClick={() => {
+							setShowStockModal(true);
+						}}
+						className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white font-semibold px-4 py-3 rounded-xl transition border border-white/10 backdrop-blur-sm"
+					>
+						<PackagePlus size={18} />
+						<span>Update Stock</span>
+					</button>
+				</div>
 			</section>
 
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -212,6 +319,317 @@ const ProductDetails = () => {
 					</div>
 				</aside>
 			</div>
+
+			{showProductModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 bg-black/70 backdrop-blur-md">
+					<div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0f141c] p-6 sm:p-8 text-white shadow-[0_20px_45px_-20px_rgba(255,255,255,0.45)] overflow-y-auto max-h-[90vh]">
+						<div className="flex items-start justify-between gap-4 mb-6">
+							<div>
+								<p className="text-xs font-semibold uppercase tracking-[0.35em] text-red-300">Create product</p>
+								<h3 className="mt-2 text-2xl font-semibold">Add a new catalogue item</h3>
+								<p className="mt-1 text-sm text-white/60">Define pricing, availability, and stock thresholds for automatic alerts.</p>
+							</div>
+							<button
+								onClick={() => setShowProductModal(false)}
+								className="rounded-full border border-white/10 p-2 text-white/70 hover:text-white hover:border-white/30 transition"
+							>
+								<X size={18} />
+							</button>
+						</div>
+
+						<form className="space-y-6" onSubmit={handleProductSubmit}>
+							<div className="grid gap-4 sm:grid-cols-2">
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Product name</span>
+									<input
+										name="name"
+										value={productForm.name}
+										onChange={handleProductChange}
+										placeholder="Classic Heat"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+										required
+									/>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">SKU</span>
+									<input
+										name="sku"
+										value={productForm.sku}
+										onChange={handleProductChange}
+										placeholder="CH-250"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+										required
+									/>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Category</span>
+									<input
+										name="category"
+										value={productForm.category}
+										onChange={handleProductChange}
+										placeholder="Hot Sauce"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+										required
+									/>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Status</span>
+									<select
+										name="status"
+										value={productForm.status}
+										onChange={handleProductChange}
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white focus:border-red-500 focus:outline-none"
+										style={{ backgroundColor: '#0f141c', color: '#fff' }}
+									>
+										{statusOptions.map((option) => (
+											<option key={option} value={option} style={{ backgroundColor: '#0f141c', color: '#fff' }}>{option}</option>
+										))}
+									</select>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Price (Rs)</span>
+									<input
+										name="price"
+										type="text"
+										inputMode="decimal"
+										value={productForm.price}
+										onChange={handleProductChange}
+										placeholder="1100"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+										required
+									/>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Current stock</span>
+									<input
+										name="currentStock"
+										type="number"
+										min="0"
+										value={productForm.currentStock}
+										onChange={handleProductChange}
+										placeholder="0"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+									/>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Reorder point</span>
+									<input
+										name="reorderPoint"
+										type="number"
+										min="0"
+										value={productForm.reorderPoint}
+										onChange={handleProductChange}
+										placeholder="10"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+									/>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Restock target</span>
+									<input
+										name="restockTarget"
+										type="number"
+										min="0"
+										value={productForm.restockTarget}
+										onChange={handleProductChange}
+										placeholder="120"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+									/>
+								</label>
+								<label className="flex flex-col text-sm text-white/70 sm:col-span-2">
+									<span className="font-semibold text-white/80">Product image</span>
+									<div className="mt-2 flex flex-col gap-3 rounded-2xl border border-dashed border-white/15 bg-white/5 p-4">
+										<input
+											type="file"
+											accept="image/*"
+											ref={productImageInputRef}
+											onChange={handleProductImageChange}
+											className="hidden"
+										/>
+										<button
+											type="button"
+											onClick={() => productImageInputRef.current?.click()}
+											className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/15 transition"
+										>
+											<ImagePlus size={16} />
+											<span>Select image from device</span>
+										</button>
+										{productForm.imagePreview ? (
+											<div className="flex items-center gap-3">
+												<img src={productForm.imagePreview} alt="Preview" className="h-20 w-20 rounded-xl object-cover border border-white/20" />
+												<span className="text-xs text-white/60">{productForm.imageFile?.name}</span>
+											</div>
+										) : (
+											<p className="text-xs text-white/50">PNG or JPG, up to 5 MB. You can also paste a hosted image URL below.</p>
+										)}
+									</div>
+								</label>
+
+								
+							</div>
+
+							<label className="flex flex-col text-sm text-white/70">
+								<span className="font-semibold text-white/80">Description</span>
+								<textarea
+									name="description"
+									value={productForm.description}
+									onChange={handleProductChange}
+									rows={4}
+									placeholder="Tell customers why this blend is special"
+									className="mt-2 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+								/>
+							</label>
+
+							<div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+								<button
+									type="button"
+									onClick={() => setShowProductModal(false)}
+									className="w-full sm:w-auto rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white/70 hover:text-white"
+								>
+									Cancel
+								</button>
+								<button
+									type="submit"
+									className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-900/40 hover:brightness-110"
+								>
+									Save product
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
+
+			{showStockModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 bg-black/70 backdrop-blur-md">
+					<div className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#111722] p-6 sm:p-8 text-white shadow-[0_20px_45px_-20px_rgba(255,255,255,0.45)] overflow-y-auto max-h-[90vh]">
+						<div className="flex items-start justify-between gap-4 mb-6">
+							<div>
+								<p className="text-xs font-semibold uppercase tracking-[0.35em] text-blue-200">Adjust stock</p>
+								<h3 className="mt-2 text-2xl font-semibold">Log an inventory movement</h3>
+								<p className="mt-1 text-sm text-white/60">Record restocks, deductions, or manual corrections for full audit trails.</p>
+							</div>
+							<button
+								onClick={() => setShowStockModal(false)}
+								className="rounded-full border border-white/10 p-2 text-white/70 hover:text-white hover:border-white/30 transition"
+							>
+								<X size={18} />
+							</button>
+						</div>
+
+						<form className="space-y-6" onSubmit={handleStockSubmit}>
+							<label className="flex flex-col text-sm text-white/70">
+								<span className="font-semibold text-white/80">Product</span>
+								<select
+									name="productId"
+									value={stockForm.productId}
+									onChange={handleStockChange}
+									className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white focus:border-red-500 focus:outline-none"
+									style={{ backgroundColor: '#111722', color: '#fff' }}
+									required
+								>
+									{productList.map((product) => (
+										<option key={product.id} value={product.id} style={{ backgroundColor: '#111722', color: '#fff' }}>
+											{product.name} ({product.sku})
+										</option>
+									))}
+								</select>
+							</label>
+
+							<div className="grid gap-4 sm:grid-cols-2">
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Movement type</span>
+									<div className="mt-2 grid gap-2">
+										{changeTypes.map(({ value, label }) => {
+											const active = stockForm.changeType === value;
+											return (
+												<label
+													key={value}
+													className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${active ? 'border-red-500 bg-red-600/15' : 'border-white/10 bg-white/5 hover:border-red-400/40'}`}
+												>
+													<input
+														type="radio"
+														name="changeType"
+														value={value}
+														className="sr-only"
+														onChange={handleStockChange}
+													/>
+													<span>{label}</span>
+												</label>
+											);
+										})}
+									</div>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Quantity</span>
+									<input
+										name="quantity"
+										type="number"
+										min="1"
+										value={stockForm.quantity}
+										onChange={handleStockChange}
+										placeholder="24"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+										required
+									/>
+								</label>
+							</div>
+
+							<div className="grid gap-4 sm:grid-cols-2">
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Reference</span>
+									<input
+										name="reference"
+										value={stockForm.reference}
+										onChange={handleStockChange}
+										placeholder="PO-2025-11-09"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+									/>
+								</label>
+								<label className="flex flex-col text-sm text-white/70">
+									<span className="font-semibold text-white/80">Unit cost (Rs)</span>
+									<input
+										name="unitCost"
+										type="number"
+										min="0"
+										value={stockForm.unitCost}
+										onChange={handleStockChange}
+										placeholder="450"
+										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+									/>
+								</label>
+							</div>
+
+							<label className="flex flex-col text-sm text-white/70">
+								<span className="font-semibold text-white/80">Notes</span>
+								<textarea
+									name="note"
+									value={stockForm.note}
+									onChange={handleStockChange}
+									rows={3}
+									placeholder="Batch #2025-11 restock"
+									className="mt-2 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+								/>
+							</label>
+
+							<div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+								<button
+									type="button"
+									onClick={() => setShowStockModal(false)}
+									className="w-full sm:w-auto rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white/70 hover:text-white"
+								>
+									Cancel
+								</button>
+								<button
+									type="submit"
+									className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-900/40 hover:brightness-110"
+								>
+									Log stock change
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

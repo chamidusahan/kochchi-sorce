@@ -30,6 +30,12 @@
     }, [user, navigate, redirectTo]);
 
     useEffect(() => {
+      if (location.state?.mode === "signup") {
+        setMode("signup");
+      }
+    }, [location.state]);
+
+    useEffect(() => {
       setMessage(null);
     }, [mode]);
 

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const DELIVERY_FEE = 350;
 
@@ -34,6 +36,9 @@ const OrderNow = () => {
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [orderSummary, setOrderSummary] = useState(null);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const selectedProduct = productOptions.find((item) => item.value === form.product);
   const quantity = Number(form.quantity) || 0;
@@ -72,6 +77,10 @@ const OrderNow = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!user) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
     if (!validate()) return;
 
     const productName = isCustomProduct ? form.otherProduct : selectedProduct?.label ?? form.product;
@@ -93,6 +102,48 @@ const OrderNow = () => {
     setSubmitted(true);
     // TODO: call backend API to place order
   };
+
+  if (loading) {
+    return (
+      <section id="order-now" className="min-h-screen flex items-center justify-center bg-gradient-to-b from-black via-[#0d1117] to-red-950">
+        <div className="flex flex-col items-center gap-4 text-white/80">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-red-600 border-t-transparent" />
+          <p className="text-sm uppercase tracking-[0.3em] text-white/60">Checking session</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!user) {
+    return (
+      <section id="order-now" className="relative min-h-screen overflow-hidden bg-gradient-to-b from-black via-[#0d1117] to-red-950">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_500px_at_15%_10%,rgba(220,38,38,0.25),transparent_65%),radial-gradient(700px_480px_at_85%_85%,rgba(51,65,85,0.35),transparent_60%)]" />
+        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center text-white">
+          <div className="max-w-xl space-y-6">
+            <p className="inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-600/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-red-200">Hold up</p>
+            <h1 className="text-3xl font-semibold">Please log in to place your order</h1>
+            <p className="text-white/70">
+              You need an account to confirm deliveries, track your order history, and unlock member-only drops.
+            </p>
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <button
+                onClick={() => navigate("/login", { state: { from: location } })}
+                className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-red-900/40 transition hover:brightness-110"
+              >
+                Go to login
+              </button>
+              <button
+                onClick={() => navigate("/login", { state: { from: location, mode: "signup" } })}
+                className="w-full sm:w-auto rounded-2xl border border-white/20 bg-white/5 px-6 py-3 text-base font-semibold text-white/80 backdrop-blur transition hover:text-white"
+              >
+                Create account
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="order-now" className="relative min-h-screen overflow-hidden bg-gradient-to-b from-black via-[#0d1117] to-red-950">

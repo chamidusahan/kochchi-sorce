@@ -1,11 +1,73 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const HeroSection = () => {
-  const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
+
+  // Memoize the floating elements to prevent re-renders from resetting animations
+  const floatingChillies = useMemo(() => {
+    return [...Array(12)].map((_, i) => {
+      const randomDelay = Math.random() * 5;
+      const randomDuration = 15 + Math.random() * 10;
+      const startX = Math.random() * 100;
+      const startY = Math.random() * 100;
+      
+      // Generate smooth bezier curve paths
+      const path1X = Math.random() * 100;
+      const path1Y = Math.random() * 100;
+      const path2X = Math.random() * 100;
+      const path2Y = Math.random() * 100;
+      const path3X = Math.random() * 100;
+      const path3Y = Math.random() * 100;
+      
+      return {
+        key: `chili-${i}`,
+        startX,
+        startY,
+        path1X,
+        path1Y,
+        path2X,
+        path2Y,
+        path3X,
+        path3Y,
+        randomDelay,
+        randomDuration,
+      };
+    });
+  }, []);
+
+  const floatingGarlic = useMemo(() => {
+    return [...Array(6)].map((_, i) => {
+      const randomDelay = Math.random() * 4;
+      const randomDuration = 18 + Math.random() * 12;
+      const startX = Math.random() * 100;
+      const startY = Math.random() * 100;
+      
+      // Generate smooth bezier curve paths
+      const path1X = Math.random() * 100;
+      const path1Y = Math.random() * 100;
+      const path2X = Math.random() * 100;
+      const path2Y = Math.random() * 100;
+      const path3X = Math.random() * 100;
+      const path3Y = Math.random() * 100;
+      
+      return {
+        key: `garlic-${i}`,
+        startX,
+        startY,
+        path1X,
+        path1Y,
+        path2X,
+        path2Y,
+        path3X,
+        path3Y,
+        randomDelay,
+        randomDuration,
+      };
+    });
+  }, []);
 
   return (
     <section
@@ -14,76 +76,106 @@ const HeroSection = () => {
     >
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Floating chili peppers */}
-        {[...Array(5)].map((_, i) => (
+        {/* Floating chili peppers - smooth continuous motion */}
+        {floatingChillies.map((chili) => (
           <motion.div
-            key={`chili-${i}`}
+            key={chili.key}
             className="absolute"
             initial={{
-              x: `${Math.random() * 100 - 50}%`,
-              y: `${Math.random() * 100}%`,
-              rotate: Math.random() * 360,
+              x: `${chili.startX}vw`,
+              y: `${chili.startY}vh`,
+              rotate: 0,
             }}
             animate={{
-              y: [
-                `${Math.random() * 100}%`,
-                `${Math.random() * 100}%`,
-                `${Math.random() * 100}%`,
-              ],
               x: [
-                `${Math.random() * 100 - 50}%`,
-                `${Math.random() * 100 - 50}%`,
-                `${Math.random() * 100 - 50}%`,
+                `${chili.startX}vw`,
+                `${chili.path1X}vw`,
+                `${chili.path2X}vw`,
+                `${chili.path3X}vw`,
+                `${chili.startX}vw`,
               ],
-              rotate: Math.random() * 720 - 360,
+              y: [
+                `${chili.startY}vh`,
+                `${chili.path1Y}vh`,
+                `${chili.path2Y}vh`,
+                `${chili.path3Y}vh`,
+                `${chili.startY}vh`,
+              ],
+              rotate: [0, 120, 240, 360, 480],
             }}
             transition={{
               repeat: Infinity,
-              duration: 15 + Math.random() * 20,
+              duration: chili.randomDuration,
+              delay: chili.randomDelay,
               ease: "easeInOut",
+              times: [0, 0.25, 0.5, 0.75, 1],
             }}
           >
-            <img
+            <motion.img
               src="https://cdn-icons-png.flaticon.com/512/1147/1147805.png"
               alt=""
-              className="h-12 md:h-16 lg:h-20 opacity-20 select-none pointer-events-none"
+              className="h-8 md:h-12 lg:h-16 select-none pointer-events-none"
+              animate={{
+                opacity: [0.15, 0.3, 0.2, 0.35, 0.15],
+                scale: [1, 1.1, 0.9, 1.05, 1],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: chili.randomDuration / 2,
+                ease: "easeInOut",
+              }}
             />
           </motion.div>
         ))}
 
-        {/* Floating garlic */}
-        {[...Array(3)].map((_, i) => (
+        {/* Floating garlic - smooth continuous motion */}
+        {floatingGarlic.map((garlic) => (
           <motion.div
-            key={`garlic-${i}`}
+            key={garlic.key}
             className="absolute"
             initial={{
-              x: `${Math.random() * 100 - 50}%`,
-              y: `${Math.random() * 100}%`,
-              rotate: Math.random() * 360,
+              x: `${garlic.startX}vw`,
+              y: `${garlic.startY}vh`,
+              rotate: 0,
             }}
             animate={{
-              y: [
-                `${Math.random() * 100}%`,
-                `${Math.random() * 100}%`,
-                `${Math.random() * 100}%`,
-              ],
               x: [
-                `${Math.random() * 100 - 50}%`,
-                `${Math.random() * 100 - 50}%`,
-                `${Math.random() * 100 - 50}%`,
+                `${garlic.startX}vw`,
+                `${garlic.path1X}vw`,
+                `${garlic.path2X}vw`,
+                `${garlic.path3X}vw`,
+                `${garlic.startX}vw`,
               ],
-              rotate: Math.random() * 720 - 360,
+              y: [
+                `${garlic.startY}vh`,
+                `${garlic.path1Y}vh`,
+                `${garlic.path2Y}vh`,
+                `${garlic.path3Y}vh`,
+                `${garlic.startY}vh`,
+              ],
+              rotate: [0, -120, -240, -360, -480],
             }}
             transition={{
               repeat: Infinity,
-              duration: 20 + Math.random() * 15,
+              duration: garlic.randomDuration,
+              delay: garlic.randomDelay,
               ease: "easeInOut",
+              times: [0, 0.25, 0.5, 0.75, 1],
             }}
           >
-            <img
+            <motion.img
               src="https://cdn-icons-png.flaticon.com/512/1135/1135434.png"
               alt=""
-              className="h-10 md:h-14 lg:h-16 opacity-20 select-none pointer-events-none"
+              className="h-6 md:h-10 lg:h-14 select-none pointer-events-none"
+              animate={{
+                opacity: [0.15, 0.25, 0.2, 0.3, 0.15],
+                scale: [1, 0.95, 1.05, 0.98, 1],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: garlic.randomDuration / 2,
+                ease: "easeInOut",
+              }}
             />
           </motion.div>
         ))}
@@ -133,10 +225,8 @@ const HeroSection = () => {
         <div className="md:w-1/2 flex justify-center mt-12 md:mt-0 z-10">
           <motion.div
             className="relative w-64 h-64 md:w-80 md:h-80"
-            animate={{ rotate: isHovered ? 360 : 0 }}
+            whileHover={{ rotate: 360 }}
             transition={{ duration: 1.5, ease: "easeInOut" }}
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
           >
             <img
               src="public\images\product1.png"

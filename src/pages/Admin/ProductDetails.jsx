@@ -12,109 +12,97 @@ import {
 	ImagePlus
 } from 'lucide-react';
 
-const productSummary = [
-	{ label: 'Live Products', value: '32', delta: '+2 this week', icon: Package, accent: 'text-red-400', border: 'border-red-700/60' },
-	{ label: 'Drafts', value: '6', delta: 'Needs review', icon: Layers, accent: 'text-amber-300', border: 'border-amber-700/60' },
-	{ label: 'Low Inventory', value: '4', delta: 'Restock soon', icon: AlertTriangle, accent: 'text-rose-300', border: 'border-red-700/60' },
-];
-
-const productList = [
-	{
-		id: 'PRD-001',
-		name: 'Classic Heat',
-		sku: 'CH-250',
-		category: 'Hot Sauce',
-		price: 1100,
-		stock: 120,
-		status: 'Active',
-		updated: 'Nov 06, 2025',
-		sales: 248,
-		image: 'public/images/productinfo.jpg'
-	},
-	{
-		id: 'PRD-002',
-		name: 'Extreme Fire',
-		sku: 'EF-200',
-		category: 'Hot Sauce',
-		price: 1300,
-		stock: 42,
-		status: 'Low Stock',
-		updated: 'Nov 05, 2025',
-		sales: 312,
-		image: 'https://www.pngall.com/wp-content/uploads/5/Hot-Sauce-Bottle-Transparent.png'
-	},
-	{
-		id: 'PRD-003',
-		name: 'Garlic Fusion',
-		sku: 'GF-250',
-		category: 'Specialty',
-		price: 1200,
-		stock: 88,
-		status: 'Active',
-		updated: 'Nov 03, 2025',
-		sales: 198,
-		image: 'https://freepngimg.com/thumb/sauce/163764-sauce-hot-bottle-free-download-image.png'
-	},
-	{
-		id: 'PRD-004',
-		name: 'Smoky Mango Blaze',
-		sku: 'MB-200',
-		category: 'Limited',
-		price: 1450,
-		stock: 18,
-		status: 'Draft',
-		updated: 'Oct 31, 2025',
-		sales: 64,
-		image: 'https://i.ibb.co/4Mx57Yq/mango-sauce.png'
-	},
-	{
-		id: 'PRD-005',
-		name: 'Coconut Fire Relish',
-		sku: 'CF-180',
-		category: 'Condiment',
-		price: 980,
-		stock: 0,
-		status: 'Low Stock',
-		updated: 'Oct 27, 2025',
-		sales: 142,
-		image: 'https://i.ibb.co/QfmTnBT/coconut-sauce.png'
-	}
-];
-
 const statusStyles = {
 	Active: 'bg-green-700/25 text-green-300',
+	Live: 'bg-green-700/25 text-green-300',
 	Draft: 'bg-amber-700/25 text-amber-200',
 	'Low Stock': 'bg-red-700/25 text-red-300',
+	Archived: 'bg-gray-700/25 text-gray-300',
 	default: 'bg-gray-700/25 text-gray-300'
+};
+
+const formatDateIdentifier = () => {
+	const now = new Date();
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, '0');
+	const day = String(now.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
+};
+
+const generateReferenceByType = (type) => {
+	const datePart = formatDateIdentifier();
+	if (type === 'IN') {
+		const hourSuffix = String(new Date().getHours()).padStart(2, '0');
+		return `PO-${datePart}-${hourSuffix}`;
+	}
+	if (type === 'OUT') {
+		return `ADJ-${datePart}`;
+	}
+	return `MAN-${datePart}`;
+};
+
+const generateAutoNoteText = (quantityValue) => {
+	const quantityNumber = Number(quantityValue);
+	const hasQuantity = Number.isFinite(quantityNumber) && quantityNumber > 0;
+	const quantityText = hasQuantity ? `${quantityNumber}` : 'incoming';
+	return hasQuantity
+		? `Restocked ${quantityText} units. Batch date: ${formatDateIdentifier()}.`
+		: `Restocked units. Batch date: ${formatDateIdentifier()}.`;
+};
+
+const movementVisuals = {
+	IN: {
+		active: 'border-green-500 bg-green-600/20 shadow-[0_0_18px_rgba(34,197,94,0.25)]',
+		idle: 'border-white/10 bg-white/5 hover:border-green-500/50 hover:bg-green-600/10',
+		dot: 'bg-green-400',
+		text: 'text-green-200'
+	},
+	OUT: {
+		active: 'border-red-500 bg-red-600/20 shadow-[0_0_18px_rgba(248,113,113,0.25)]',
+		idle: 'border-white/10 bg-white/5 hover:border-red-500/50 hover:bg-red-600/10',
+		dot: 'bg-red-400',
+		text: 'text-red-200'
+	},
+	ADJUST: {
+		active: 'border-amber-500 bg-amber-500/15 shadow-[0_0_18px_rgba(251,191,36,0.22)]',
+		idle: 'border-white/10 bg-white/5 hover:border-amber-400/50 hover:bg-amber-500/10',
+		dot: 'bg-amber-300',
+		text: 'text-amber-100'
+	}
+};
+
+const movementPanels = {
+	IN: 'border-green-500/40 bg-green-600/15 text-green-100',
+	OUT: 'border-red-500/40 bg-red-600/15 text-red-100',
+	ADJUST: 'border-amber-500/40 bg-amber-500/15 text-amber-100'
 };
 
 const ProductDetails = () => {
 	const [showProductModal, setShowProductModal] = React.useState(false);
 	const [showStockModal, setShowStockModal] = React.useState(false);
+	const [productList, setProductList] = React.useState([]);
+	const [loading, setLoading] = React.useState(true);
 	const [productForm, setProductForm] = React.useState({
 		name: '',
 		sku: '',
 		category: '',
 		status: 'Draft',
 		price: '',
-		reorderPoint: '',
-		restockTarget: '',
-		currentStock: '',
-		imageUrl: '',
 		imageFile: null,
-		imagePreview: '',
-		description: ''
+		imagePreview: ''
 	});
-	const [stockForm, setStockForm] = React.useState({
-		productId: productList[0]?.id ?? '',
+	const [stockForm, setStockForm] = React.useState(() => ({
+		productId: '',
 		changeType: 'IN',
 		quantity: '',
 		unitCost: '',
-		reference: '',
+		reference: generateReferenceByType('IN'),
 		note: ''
-	});
+	}));
+	const [stockError, setStockError] = React.useState('');
+	const autoNoteRef = React.useRef('');
 
-	const statusOptions = ['Active', 'Draft', 'Low Stock', 'Archived'];
+	const statusOptions = ['Draft', 'Live', 'Archived'];
 	const changeTypes = [
 		{ value: 'IN', label: 'Incoming stock' },
 		{ value: 'OUT', label: 'Stock deduction' },
@@ -123,6 +111,97 @@ const ProductDetails = () => {
 
 	const topProducts = productList.slice(0, 3);
 	const productImageInputRef = React.useRef(null);
+	const [isImageDragging, setIsImageDragging] = React.useState(false);
+
+	// Calculate product summary from live data
+	const productSummary = React.useMemo(() => {
+		const liveCount = productList.filter(p => p.status === 'Live' || p.status === 'Active').length;
+		const draftCount = productList.filter(p => p.status === 'Draft').length;
+		const lowStockCount = productList.filter(p => p.stock < 20 && p.stock > 0).length;
+		
+		return [
+			{ label: 'Live Products', value: String(liveCount), delta: '+2 this week', icon: Package, accent: 'text-red-400', border: 'border-red-700/60' },
+			{ label: 'Drafts', value: String(draftCount), delta: 'Needs review', icon: Layers, accent: 'text-amber-300', border: 'border-amber-700/60' },
+			{ label: 'Low Inventory', value: String(lowStockCount), delta: 'Restock soon', icon: AlertTriangle, accent: 'text-rose-300', border: 'border-red-700/60' },
+		];
+	}, [productList]);
+
+	// Fetch products from backend
+	React.useEffect(() => {
+		const fetchProducts = async () => {
+			try {
+				const response = await fetch('http://localhost/backend/admin/api/get-products.php');
+				const result = await response.json();
+				
+				if (result.success) {
+					setProductList(result.data);
+					if (result.data.length > 0 && !stockForm.productId) {
+						setStockForm(prev => ({ ...prev, productId: result.data[0].id }));
+					}
+				}
+			} catch (error) {
+				console.error('Failed to fetch products:', error);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchProducts();
+	}, []);
+
+	const selectedProduct = React.useMemo(
+		() => productList.find((product) => product.id === stockForm.productId) ?? null,
+		[stockForm.productId]
+	);
+	const currentStockLevel = selectedProduct?.stock ?? 0;
+	const totalCost = React.useMemo(() => {
+		if (stockForm.changeType !== 'IN') {
+			return null;
+		}
+		const quantityNumber = Number(stockForm.quantity);
+		const unitCostNumber = Number(stockForm.unitCost);
+		if (!Number.isFinite(quantityNumber) || !Number.isFinite(unitCostNumber)) {
+			return null;
+		}
+		if (quantityNumber <= 0 || unitCostNumber < 0) {
+			return null;
+		}
+		return quantityNumber * unitCostNumber;
+	}, [stockForm.changeType, stockForm.quantity, stockForm.unitCost]);
+	const showUnitCostField = stockForm.changeType !== 'OUT';
+	const unitCostIsRequired = stockForm.changeType === 'IN';
+	const projectedStockLevel = React.useMemo(() => {
+		const quantityNumber = Number(stockForm.quantity);
+		if (!Number.isFinite(quantityNumber)) {
+			return null;
+		}
+		if (stockForm.changeType === 'ADJUST') {
+			return quantityNumber >= 0 ? quantityNumber : null;
+		}
+		if (quantityNumber <= 0) {
+			return null;
+		}
+		if (stockForm.changeType === 'IN') {
+			return currentStockLevel + quantityNumber;
+		}
+		if (stockForm.changeType === 'OUT') {
+			return Math.max(currentStockLevel - quantityNumber, 0);
+		}
+		return null;
+	}, [currentStockLevel, stockForm.changeType, stockForm.quantity]);
+
+	const handleFileSelection = React.useCallback((file) => {
+		setProductForm((prev) => {
+			if (prev.imagePreview) {
+				URL.revokeObjectURL(prev.imagePreview);
+			}
+			if (!file || !file.type?.startsWith('image/')) {
+				return { ...prev, imageFile: null, imagePreview: '' };
+			}
+			const previewUrl = URL.createObjectURL(file);
+			return { ...prev, imageFile: file, imagePreview: previewUrl };
+		});
+	}, []);
 
 	const handleProductChange = (event) => {
 		const { name, value } = event.target;
@@ -140,19 +219,32 @@ const ProductDetails = () => {
 	};
 
 	const handleProductImageChange = (event) => {
-		const file = event.target.files?.[0];
-		if (!file) {
-			if (productForm.imagePreview) {
-				URL.revokeObjectURL(productForm.imagePreview);
-			}
-			setProductForm((prev) => ({ ...prev, imageFile: null, imagePreview: '' }));
+		const file = event.target.files?.[0] ?? null;
+		handleFileSelection(file);
+		event.target.value = '';
+	};
+
+	const handleImageDragOver = (event) => {
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'copy';
+		if (!isImageDragging) {
+			setIsImageDragging(true);
+		}
+	};
+
+	const handleImageDragLeave = (event) => {
+		event.preventDefault();
+		if (event.currentTarget.contains(event.relatedTarget)) {
 			return;
 		}
-		if (productForm.imagePreview) {
-			URL.revokeObjectURL(productForm.imagePreview);
-		}
-		const previewUrl = URL.createObjectURL(file);
-		setProductForm((prev) => ({ ...prev, imageFile: file, imagePreview: previewUrl }));
+		setIsImageDragging(false);
+	};
+
+	const handleImageDrop = (event) => {
+		event.preventDefault();
+		setIsImageDragging(false);
+		const file = event.dataTransfer.files?.[0] ?? null;
+		handleFileSelection(file);
 	};
 
 	React.useEffect(() => () => {
@@ -163,21 +255,229 @@ const ProductDetails = () => {
 
 	const handleStockChange = (event) => {
 		const { name, value } = event.target;
+		if (stockError) {
+			setStockError('');
+		}
+		if (name === 'changeType') {
+			setStockForm((prev) => {
+				const nextReference = generateReferenceByType(value);
+				let nextNote = prev.note;
+				let nextUnitCost = prev.unitCost;
+				if (value === 'IN') {
+					nextNote = generateAutoNoteText(prev.quantity);
+					autoNoteRef.current = nextNote;
+				} else {
+					if (prev.note === autoNoteRef.current) {
+						nextNote = '';
+					}
+					autoNoteRef.current = '';
+					if (value === 'OUT') {
+						nextUnitCost = '';
+					}
+				}
+				return {
+					...prev,
+					changeType: value,
+					unitCost: nextUnitCost,
+					reference: nextReference,
+					note: nextNote
+				};
+			});
+			return;
+		}
+		if (name === 'quantity') {
+			setStockForm((prev) => {
+				let nextNote = prev.note;
+				if (prev.changeType === 'IN') {
+					const autoNote = generateAutoNoteText(value);
+					if (prev.note === autoNoteRef.current || !prev.note) {
+						nextNote = autoNote;
+					}
+					autoNoteRef.current = autoNote;
+				}
+				return { ...prev, quantity: value, note: prev.changeType === 'IN' ? nextNote : prev.note };
+			});
+			return;
+		}
+		if (name === 'productId') {
+			setStockForm((prev) => ({
+				...prev,
+				productId: value,
+				reference: generateReferenceByType(prev.changeType)
+			}));
+			return;
+		}
+		if (name === 'note') {
+			autoNoteRef.current = value;
+		}
 		setStockForm((prev) => ({ ...prev, [name]: value }));
 	};
 
-	const handleProductSubmit = (event) => {
+	const handleProductSubmit = async (event) => {
 		event.preventDefault();
-		// TODO: integrate with backend endpoint
+		
+		try {
+			const formData = new FormData();
+			formData.append('name', productForm.name);
+			formData.append('sku', productForm.sku);
+			formData.append('category', productForm.category);
+			formData.append('status', productForm.status);
+			formData.append('price', productForm.price);
+			
+			if (productForm.imageFile) {
+				formData.append('image', productForm.imageFile);
+			}
+			
+			const response = await fetch('http://localhost/backend/admin/api/add-product.php', {
+				method: 'POST',
+				body: formData
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				// Refresh product list
+				const productsResponse = await fetch('http://localhost/backend/admin/api/get-products.php');
+				const productsResult = await productsResponse.json();
+				
+				if (productsResult.success) {
+					setProductList(productsResult.data);
+				}
+				
+				// Reset form and close modal
+				setProductForm({
+					name: '',
+					sku: '',
+					category: '',
+					status: 'Draft',
+					price: '',
+					imageFile: null,
+					imagePreview: ''
+				});
+				setShowProductModal(false);
+				
+				alert('Product added successfully!');
+			} else {
+				alert('Error: ' + result.error);
+			}
+		} catch (error) {
+			console.error('Failed to add product:', error);
+			alert('Failed to add product. Please try again.');
+		}
 	};
 
-	const handleStockSubmit = (event) => {
+	const handleStockSubmit = async (event) => {
 		event.preventDefault();
-		// TODO: integrate with backend endpoint
+		const quantityNumber = Number(stockForm.quantity);
+		const unitCostNumber = Number(stockForm.unitCost);
+		if (!Number.isFinite(quantityNumber)) {
+			setStockError('Please enter a valid quantity.');
+			return;
+		}
+		if (quantityNumber < 0) {
+			setStockError('Quantity cannot be negative.');
+			return;
+		}
+		if (stockForm.changeType === 'IN') {
+			if (quantityNumber <= 0) {
+				setStockError('Incoming stock must be greater than zero.');
+				return;
+			}
+			if (!Number.isFinite(unitCostNumber) || unitCostNumber <= 0) {
+				setStockError('Please provide a unit cost greater than zero for incoming stock.');
+				return;
+			}
+		}
+		if (stockForm.changeType === 'OUT') {
+			if (quantityNumber <= 0) {
+				setStockError('Deduction must be greater than zero.');
+				return;
+			}
+			if (quantityNumber > currentStockLevel) {
+				setStockError('Deduction exceeds current stock.');
+				return;
+			}
+		}
+		if (stockForm.changeType === 'ADJUST' && stockForm.unitCost) {
+			if (!Number.isFinite(unitCostNumber) || unitCostNumber < 0) {
+				setStockError('Unit cost for adjustments must be zero or greater.');
+				return;
+			}
+		}
+		setStockError('');
+		
+		try {
+			const response = await fetch('http://localhost/backend/admin/api/add-stock.php', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					productId: stockForm.productId,
+					changeType: stockForm.changeType,
+					quantity: quantityNumber,
+					unitCost: stockForm.unitCost ? parseFloat(stockForm.unitCost) : null,
+					reference: stockForm.reference,
+					note: stockForm.note
+				})
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				// Refresh product list to show updated stock
+				const productsResponse = await fetch('http://localhost/backend/admin/api/get-products.php');
+				const productsResult = await productsResponse.json();
+				
+				if (productsResult.success) {
+					setProductList(productsResult.data);
+				}
+				
+				// Reset form and close modal
+				setStockForm({
+					productId: productList[0]?.id ?? '',
+					changeType: 'IN',
+					quantity: '',
+					unitCost: '',
+					reference: generateReferenceByType('IN'),
+					note: ''
+				});
+				setShowStockModal(false);
+				
+				alert('Stock updated successfully!');
+			} else {
+				setStockError(result.error);
+			}
+		} catch (error) {
+			console.error('Failed to update stock:', error);
+			setStockError('Failed to update stock. Please try again.');
+		}
 	};
+
+	const primaryActionLabel = React.useMemo(() => {
+		if (productForm.status === 'Live') {
+			return 'Save & Publish';
+		}	
+		return 'Save product';
+	}, [productForm.status]);
+
+	const imageMeta = React.useMemo(() => {
+		if (!productForm.imageFile) {
+			return '';
+		}
+		const sizeInMb = productForm.imageFile.size / (1024 * 1024);
+		const displaySize = sizeInMb >= 1 ? `${sizeInMb.toFixed(2)} MB` : `${Math.round(productForm.imageFile.size / 1024)} KB`;
+		return `${productForm.imageFile.name} · ${displaySize}`;
+	}, [productForm.imageFile]);
 
 	return (
 		<div className="space-y-6">
+			{loading ? (
+				<div className="flex items-center justify-center py-20">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+				</div>
+			) : (
+				<>
 			<section className="bg-black/80 rounded-2xl p-4 md:p-6 shadow-lg border border-gray-800/50 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<div className="w-full lg:max-w-xl flex flex-col gap-3 sm:flex-row sm:items-center">
 					<div className="relative flex-1">
@@ -264,7 +564,13 @@ const ProductDetails = () => {
 										<tr key={product.id} className="border-b border-gray-800/40 last:border-none">
 											<td className="py-3 px-4">
 												<div className="flex items-center gap-3">
-													<img src={product.image} alt={product.name} className="w-12 h-12 rounded-lg object-cover bg-gray-900/70 border border-gray-800" />
+													{product.image ? (
+														<img src={product.image} alt={product.name} className="w-12 h-12 rounded-lg object-cover bg-gray-900/70 border border-gray-800" />
+													) : (
+														<div className="w-12 h-12 rounded-lg bg-gray-900/70 border border-gray-800 flex items-center justify-center">
+															<Package size={20} className="text-white/40" />
+														</div>
+													)}
 													<div>
 														<p className="font-semibold text-white">{product.name}</p>
 														<span className="text-xs text-white/50">{product.sku}</span>
@@ -305,12 +611,18 @@ const ProductDetails = () => {
 					<ul className="space-y-4">
 						{topProducts.map((product) => (
 							<li key={`${product.id}-highlight`} className="flex items-center gap-3">
-								<img src={product.image} alt={product.name} className="w-14 h-14 rounded-xl object-cover bg-gray-900/70 border border-gray-800" />
+								{product.image ? (
+									<img src={product.image} alt={product.name} className="w-14 h-14 rounded-xl object-cover bg-gray-900/70 border border-gray-800" />
+								) : (
+									<div className="w-14 h-14 rounded-xl bg-gray-900/70 border border-gray-800 flex items-center justify-center">
+										<Package size={24} className="text-white/40" />
+									</div>
+								)}
 								<div className="flex-1">
 									<p className="font-semibold text-white text-sm">{product.name}</p>
 									<p className="text-xs text-white/50">{product.category}</p>
 								</div>
-								<span className="text-sm font-semibold text-white/90">{product.sales} sold</span>
+								<span className="text-sm font-semibold text-white/90">{product.sales || 0} sold</span>
 							</li>
 						))}
 					</ul>
@@ -399,45 +711,15 @@ const ProductDetails = () => {
 										required
 									/>
 								</label>
-								<label className="flex flex-col text-sm text-white/70">
-									<span className="font-semibold text-white/80">Current stock</span>
-									<input
-										name="currentStock"
-										type="number"
-										min="0"
-										value={productForm.currentStock}
-										onChange={handleProductChange}
-										placeholder="0"
-										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
-									/>
-								</label>
-								<label className="flex flex-col text-sm text-white/70">
-									<span className="font-semibold text-white/80">Reorder point</span>
-									<input
-										name="reorderPoint"
-										type="number"
-										min="0"
-										value={productForm.reorderPoint}
-										onChange={handleProductChange}
-										placeholder="10"
-										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
-									/>
-								</label>
-								<label className="flex flex-col text-sm text-white/70">
-									<span className="font-semibold text-white/80">Restock target</span>
-									<input
-										name="restockTarget"
-										type="number"
-										min="0"
-										value={productForm.restockTarget}
-										onChange={handleProductChange}
-										placeholder="120"
-										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
-									/>
-								</label>
 								<label className="flex flex-col text-sm text-white/70 sm:col-span-2">
 									<span className="font-semibold text-white/80">Product image</span>
-									<div className="mt-2 flex flex-col gap-3 rounded-2xl border border-dashed border-white/15 bg-white/5 p-4">
+									<div
+										className={`mt-2 flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed p-6 text-center transition ${isImageDragging ? 'border-red-500 bg-red-600/10' : 'border-white/20 bg-white/5'}`}
+										onDragOver={handleImageDragOver}
+										onDragLeave={handleImageDragLeave}
+										onDrop={handleImageDrop}
+										role="presentation"
+									>
 										<input
 											type="file"
 											accept="image/*"
@@ -445,39 +727,40 @@ const ProductDetails = () => {
 											onChange={handleProductImageChange}
 											className="hidden"
 										/>
-										<button
-											type="button"
-											onClick={() => productImageInputRef.current?.click()}
-											className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/15 transition"
-										>
-											<ImagePlus size={16} />
-											<span>Select image from device</span>
-										</button>
 										{productForm.imagePreview ? (
-											<div className="flex items-center gap-3">
-												<img src={productForm.imagePreview} alt="Preview" className="h-20 w-20 rounded-xl object-cover border border-white/20" />
-												<span className="text-xs text-white/60">{productForm.imageFile?.name}</span>
+											<div className="flex flex-col items-center gap-3">
+												<div className="relative h-40 w-40 overflow-hidden rounded-xl border border-white/20 bg-black/40">
+													<img src={productForm.imagePreview} alt="Preview" className="h-full w-full object-cover" />
+												</div>
+												{imageMeta && <span className="text-xs text-white/60">{imageMeta}</span>}
+												<button
+													type="button"
+													onClick={() => productImageInputRef.current?.click()}
+													className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15 transition"
+												>
+													Replace image
+												</button>
 											</div>
 										) : (
-											<p className="text-xs text-white/50">PNG or JPG, up to 5 MB. You can also paste a hosted image URL below.</p>
+											<div className="flex flex-col items-center gap-3">
+												<span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-600/15 text-red-300">
+													<ImagePlus size={22} />
+												</span>
+												<p className="text-sm font-semibold text-white/80">{isImageDragging ? 'Release to upload' : 'Drag & drop product image'}</p>
+												<p className="text-xs text-white/60">or</p>
+												<button
+													type="button"
+													onClick={() => productImageInputRef.current?.click()}
+													className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15 transition"
+												>
+													Browse files
+												</button>
+											</div>
 										)}
+										<p className="text-xs text-white/50">Recommended 1:1 • Up to 2 MB • We compress oversized uploads for faster checkout.</p>
 									</div>
-								</label>
-
-								
-							</div>
-
-							<label className="flex flex-col text-sm text-white/70">
-								<span className="font-semibold text-white/80">Description</span>
-								<textarea
-									name="description"
-									value={productForm.description}
-									onChange={handleProductChange}
-									rows={4}
-									placeholder="Tell customers why this blend is special"
-									className="mt-2 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
-								/>
 							</label>
+						</div>
 
 							<div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
 								<button
@@ -491,7 +774,7 @@ const ProductDetails = () => {
 									type="submit"
 									className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-900/40 hover:brightness-110"
 								>
-									Save product
+									{primaryActionLabel}
 								</button>
 							</div>
 						</form>
@@ -517,6 +800,11 @@ const ProductDetails = () => {
 						</div>
 
 						<form className="space-y-6" onSubmit={handleStockSubmit}>
+							{stockError && (
+								<div className="rounded-2xl border border-red-500/40 bg-red-600/15 px-4 py-3 text-sm text-red-200">
+									{stockError}
+								</div>
+							)}
 							<label className="flex flex-col text-sm text-white/70">
 								<span className="font-semibold text-white/80">Product</span>
 								<select
@@ -533,6 +821,7 @@ const ProductDetails = () => {
 										</option>
 									))}
 								</select>
+								<span className="mt-2 text-xs text-white/60">Current stock: {currentStockLevel.toLocaleString()} units</span>
 							</label>
 
 							<div className="grid gap-4 sm:grid-cols-2">
@@ -540,20 +829,25 @@ const ProductDetails = () => {
 									<span className="font-semibold text-white/80">Movement type</span>
 									<div className="mt-2 grid gap-2">
 										{changeTypes.map(({ value, label }) => {
-											const active = stockForm.changeType === value;
+											const isActive = stockForm.changeType === value;
+											const visuals = movementVisuals[value] ?? movementVisuals.ADJUST;
 											return (
 												<label
 													key={value}
-													className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${active ? 'border-red-500 bg-red-600/15' : 'border-white/10 bg-white/5 hover:border-red-400/40'}`}
+													className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${isActive ? visuals.active : visuals.idle}`}
 												>
 													<input
 														type="radio"
 														name="changeType"
 														value={value}
 														className="sr-only"
+														checked={isActive}
 														onChange={handleStockChange}
 													/>
-													<span>{label}</span>
+													<div className="flex items-center gap-2">
+														<span className={`h-2.5 w-2.5 rounded-full ${visuals.dot}`} />
+														<span className={isActive ? 'font-semibold text-white' : 'text-white/80'}>{label}</span>
+													</div>
 												</label>
 											);
 										})}
@@ -564,14 +858,32 @@ const ProductDetails = () => {
 									<input
 										name="quantity"
 										type="number"
-										min="1"
+										min={stockForm.changeType === 'ADJUST' ? '0' : '1'}
 										value={stockForm.quantity}
 										onChange={handleStockChange}
-										placeholder="24"
+										placeholder={stockForm.changeType === 'ADJUST' ? 'Target count' : '24'}
 										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
 										required
 									/>
 								</label>
+							</div>
+
+							<div
+								className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition ${
+									projectedStockLevel ? movementPanels[stockForm.changeType] ?? 'border-white/10 bg-white/5 text-white/70' : 'border-white/10 bg-white/5 text-white/60'
+								}`}
+							>
+								<div className="space-y-1">
+									<span className="font-medium text-white">Projected stock after change</span>
+									<p className="text-xs text-white/60">
+										{stockForm.changeType === 'IN' && 'Current stock plus incoming quantity.'}
+										{stockForm.changeType === 'OUT' && 'Reflects deduction from current stock.'}
+										{stockForm.changeType === 'ADJUST' && 'Sets stock level directly to the amount you specify.'}
+									</p>
+								</div>
+								<span className="text-sm font-semibold text-white">
+									{projectedStockLevel !== null ? `${projectedStockLevel.toLocaleString()} units` : 'Add a quantity to preview'}
+								</span>
 							</div>
 
 							<div className="grid gap-4 sm:grid-cols-2">
@@ -585,19 +897,43 @@ const ProductDetails = () => {
 										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
 									/>
 								</label>
-								<label className="flex flex-col text-sm text-white/70">
-									<span className="font-semibold text-white/80">Unit cost (Rs)</span>
-									<input
-										name="unitCost"
-										type="number"
-										min="0"
-										value={stockForm.unitCost}
-										onChange={handleStockChange}
-										placeholder="450"
-										className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
-									/>
-								</label>
+								{showUnitCostField && (
+									<label className="flex flex-col text-sm text-white/70">
+										<span className="font-semibold text-white/80">
+											Unit cost (Rs)
+											{!unitCostIsRequired && <span className="text-white/40"> &middot; optional</span>}
+										</span>
+										<input
+											name="unitCost"
+											type="number"
+											min="0"
+											value={stockForm.unitCost}
+											onChange={handleStockChange}
+											placeholder="450"
+											className="mt-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none"
+											required={unitCostIsRequired}
+										/>
+										{unitCostIsRequired ? (
+											<span className="mt-2 text-xs text-white/50">Required for incoming stock to capture landed cost.</span>
+										) : (
+											<span className="mt-2 text-xs text-white/50">Include a cost for audit notes when adjusting counts.</span>
+										)}
+									</label>
+								)}
 							</div>
+
+							{stockForm.changeType === 'IN' && (
+								<div
+									className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition ${
+										totalCost ? 'border-green-500/50 bg-green-600/15 text-green-100 shadow-[0_0_18px_rgba(34,197,94,0.25)]' : 'border-white/10 bg-white/5 text-white/60'
+									}`}
+								>
+									<span className="font-medium">Estimated total cost</span>
+									<span className={`font-semibold ${totalCost ? 'text-white' : 'text-white/70'}`}>
+										{totalCost ? `Rs. ${totalCost.toLocaleString()}` : 'Add quantity & unit cost'}
+									</span>
+								</div>
+							)}
 
 							<label className="flex flex-col text-sm text-white/70">
 								<span className="font-semibold text-white/80">Notes</span>
@@ -629,6 +965,8 @@ const ProductDetails = () => {
 						</form>
 					</div>
 				</div>
+			)}
+			</>
 			)}
 		</div>
 	);

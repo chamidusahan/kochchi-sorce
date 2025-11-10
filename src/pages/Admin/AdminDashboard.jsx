@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import ProductDetails from './ProductDetails';
+import Orders from './Orders';
 
 const navItems = [
 	{ label: 'Overview', icon: BarChart2 },
@@ -288,7 +289,7 @@ const AdminDashboard = () => {
 
 				{activeNav === 'Overview' && renderOverview()}
 				{activeNav === 'Products' && <ProductDetails />}
-				{activeNav === 'Orders' && renderPlaceholder('Orders')}
+				{activeNav === 'Orders' && <Orders />}
 				{activeNav === 'Settings' && renderPlaceholder('Settings')}
 			</main>
 		</div>

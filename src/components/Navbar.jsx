@@ -115,6 +115,12 @@ const Navbar = () => {
               </div>
             ) : user ? (
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate("/my-orders")}
+                  className="px-4 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-300 text-sm font-semibold transition-colors"
+                >
+                  My Orders
+                </button>
                 {renderAvatar()}
                 <button
                   aria-label="Log out"
@@ -182,6 +188,15 @@ const Navbar = () => {
               ) : user ? (
                 <div className="flex flex-col items-center gap-3">
                   {renderAvatar()}
+                  <button
+                    className="text-lg font-semibold text-white hover:text-red-500 transition-colors"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      navigate("/my-orders");
+                    }}
+                  >
+                    My Orders
+                  </button>
                   <button
                     className="text-lg font-semibold text-white hover:text-red-500 transition-colors"
                     onClick={() => {

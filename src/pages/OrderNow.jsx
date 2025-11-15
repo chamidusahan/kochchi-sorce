@@ -1,21 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const DELIVERY_FEE = 350;
 
-const productOptions = [
-  { value: "Classic Heat", label: "Classic Heat", description: "Signature Kochchi hot sauce", heat: "🔥 Medium", price: 1100 },
-  { value: "Extreme Fire", label: "Extreme Fire", description: "Carolina reaper infusion", heat: "🔥🔥 Extra hot", price: 1300 },
-  { value: "Garlic Fusion", label: "Garlic Fusion", description: "Roasted garlic & chili", heat: "🌶 Balanced", price: 1250 },
-  { value: "Smoky Mango", label: "Smoky Mango", description: "Seasonal mango blaze", heat: "🔥 Tropical", price: 1450 },
-  { value: "Other", label: "Custom blend", description: "Request a special batch", heat: "✨ Tell us what you need", price: 0 }
-];
+// Options will be built from DB; we always append a custom option
+const CUSTOM_OPTION = { value: "Other", label: "Custom blend", description: "Request a special batch", heat: "✨ Tell us what you need", price: 0 };
 
 const paymentOptions = [
   { value: "COD", label: "Cash on Delivery", description: "Pay when the order arrives", accent: "border-green-500/60 bg-green-500/10" },
-  { value: "VISA", label: "Visa / MasterCard", description: "Secure online payment", accent: "border-blue-500/60 bg-blue-500/10" },
-  { value: "BANK", label: "Bank Transfer", description: "Pay via local bank deposit", accent: "border-amber-500/60 bg-amber-500/10" }
+  { value: "VISA", label: "Visa / MasterCard", description: "Secure online payment", accent: "border-blue-500/60 bg-blue-500/10" }
 ];
 
 const formatCurrency = (amount) => `Rs. ${amount.toLocaleString()}`;
@@ -24,7 +18,7 @@ const createInitialForm = () => ({
   name: "",
   address: "",
   phone: "",
-  product: productOptions[0].value,
+  product: "", // set after products load
   otherProduct: "",
   quantity: 1,
   paymentMethod: paymentOptions[0].value,
@@ -36,9 +30,51 @@ const OrderNow = () => {
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [orderSummary, setOrderSummary] = useState(null);
+  const [dbProducts, setDbProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Fetch products from existing backend endpoint
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      try {
+        setProductsLoading(true);
+        const res = await fetch('http://localhost/backend/admin/api/get-products.php');
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.data)) {
+          const mapped = data.data
+            .filter(p => String(p.status || '').toLowerCase() !== 'inactive')
+            .map(p => ({
+              value: String(p.id),
+              label: p.name,
+              description: p.category || '',
+              heat: '',
+              price: Number(p.price) || 0,
+              stock: typeof p.stock !== 'undefined' ? Number(p.stock) || 0 : 0,
+            }));
+          if (isMounted) {
+            setDbProducts(mapped);
+            // set default product if empty
+            const firstInStock = mapped.find(m => (m.stock ?? 0) > 0)?.value;
+            setForm(prev => ({ ...prev, product: prev.product || firstInStock || CUSTOM_OPTION.value }));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load products', e);
+      } finally {
+        if (isMounted) setProductsLoading(false);
+      }
+    };
+    load();
+    return () => { isMounted = false; };
+  }, []);
+
+  const productOptions = useMemo(() => {
+    return [...dbProducts, CUSTOM_OPTION];
+  }, [dbProducts]);
 
   const selectedProduct = productOptions.find((item) => item.value === form.product);
   const quantity = Number(form.quantity) || 0;
@@ -57,6 +93,15 @@ const OrderNow = () => {
     if (isCustomProduct && !form.otherProduct.trim()) e.otherProduct = "Let us know which blend you need";
     if (!Number.isInteger(Number(form.quantity)) || Number(form.quantity) < 1) e.quantity = "Quantity must be at least 1";
     if (!form.paymentMethod) e.paymentMethod = "Select a payment method";
+    // Stock validations
+    if (!isCustomProduct) {
+      const sp = selectedProduct;
+      if (sp && (sp.stock ?? 0) <= 0) {
+        e.product = "Selected product is out of stock";
+      } else if (sp && Number(form.quantity) > (sp.stock ?? Number.MAX_SAFE_INTEGER)) {
+        e.quantity = `Only ${sp.stock} in stock`;
+      }
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -75,7 +120,7 @@ const OrderNow = () => {
     setErrors({});
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
       navigate("/login", { state: { from: location } });
@@ -86,21 +131,49 @@ const OrderNow = () => {
     const productName = isCustomProduct ? form.otherProduct : selectedProduct?.label ?? form.product;
     const paymentLabel = paymentOptions.find((option) => option.value === form.paymentMethod)?.label ?? form.paymentMethod;
 
-    setOrderSummary({
-      name: form.name,
-      address: form.address,
-      phone: form.phone,
-      product: productName,
-      quantity,
-      paymentMethod: paymentLabel,
-      notes: form.notes,
-      unitPrice,
-      subTotal,
-      deliveryFee,
-      total
-    });
-    setSubmitted(true);
-    // TODO: call backend API to place order
+    // Persist to backend (customer_orders)
+    try {
+      const payload = {
+        totalAmount: total,
+        paymentMethod: form.paymentMethod, // 'COD' | 'VISA' -> server maps to DB enum
+        paymentStatus: 'Pending',
+        shippingPhone: form.phone,
+        shippingAddress: form.address,
+        // Optional: append product + qty in address notes for now
+        // comment: no separate order_items table in current schema
+      };
+
+      const res = await fetch('http://localhost/backend/user/api/create-order.php', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data?.message || 'Failed to place order');
+      }
+
+      setOrderSummary({
+        name: form.name,
+        address: form.address,
+        phone: form.phone,
+        product: productName,
+        quantity,
+        paymentMethod: paymentLabel,
+        notes: form.notes,
+        unitPrice,
+        subTotal,
+        deliveryFee,
+        total,
+        orderId: data.orderId
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Create order failed', err);
+      alert(err.message || 'Failed to place order');
+    }
   };
 
   if (loading) {
@@ -245,25 +318,37 @@ const OrderNow = () => {
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       {productOptions.map((option) => {
                         const active = form.product === option.value;
+                        const out = option.value !== 'Other' && (option.stock ?? 0) <= 0;
                         return (
                           <label
                             key={option.value}
-                            className={`relative flex cursor-pointer flex-col rounded-2xl border ${active ? "border-red-500 bg-red-600/15" : "border-white/10 bg-white/5 hover:border-red-400/60"} p-4 transition`}
+                            className={`relative flex ${out ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} flex-col rounded-2xl border ${active ? "border-red-500 bg-red-600/15" : "border-white/10 bg-white/5 hover:border-red-400/60"} p-4 transition`}
                           >
                             <input
                               type="radio"
                               name="product"
                               value={option.value}
                               className="sr-only"
+                              disabled={out}
                               onChange={() => handleRadioChange("product", option.value)}
                             />
                             <span className="flex items-center justify-between text-white">
                               <span className="text-base font-semibold">{option.label}</span>
-                              {option.price ? <span className="text-sm text-white/70">{formatCurrency(option.price)}</span> : <span className="text-sm text-white/60">Custom quote</span>}
+                              {out ? (
+                                <span className="inline-flex items-center rounded-full bg-red-600/20 text-red-300 border border-red-500/40 px-2 py-0.5 text-xs font-semibold">
+                                  Out of stock
+                                </span>
+                              ) : (
+                                option.price ? (
+                                  <span className="text-sm text-white/70">{formatCurrency(option.price)}</span>
+                                ) : (
+                                  <span className="text-sm text-white/60">Custom quote</span>
+                                )
+                              )}
                             </span>
-                            <span className="mt-2 text-sm text-white/60">{option.description}</span>
-                            <span className="mt-3 inline-flex rounded-full border border-white/10 px-3 py-1 text-xs text-white/60">{option.heat}</span>
-                            {active && <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-red-400" />}
+                            {option.description && <span className="mt-2 text-sm text-white/60">{option.description}</span>}
+                            {option.heat && <span className="mt-3 inline-flex rounded-full border border-white/10 px-3 py-1 text-xs text-white/60">{option.heat}</span>}
+                            {!out && active && <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-red-400" />}
                           </label>
                         );
                       })}

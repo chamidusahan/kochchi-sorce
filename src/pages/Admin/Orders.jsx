@@ -16,112 +16,9 @@ import {
 	Trash2
 } from 'lucide-react';
 
-// Available products for quick bill
-const availableProducts = [
-	{ id: 1, name: 'Classic Heat', sku: 'CH-250', price: 1100 },
-	{ id: 2, name: 'Extreme Fire', sku: 'EF-200', price: 1300 },
-	{ id: 3, name: 'Garlic Fusion', sku: 'GF-250', price: 1200 },
-	{ id: 4, name: 'Smoky Mango Blaze', sku: 'MB-200', price: 1450 },
-	{ id: 5, name: 'Coconut Fire Relish', sku: 'CF-180', price: 980 },
-	{ id: 6, name: 'Thai Chili Crush', sku: 'TC-200', price: 1250 },
-	{ id: 7, name: 'Lemon Pepper Heat', sku: 'LP-250', price: 1150 },
-	{ id: 8, name: 'Curry Inferno', sku: 'CI-200', price: 1350 }
-];
-
-// Dummy order data
-const orderData = [
-	{
-		id: 'ORD-001',
-		customerName: 'John Doe',
-		email: 'john@example.com',
-		phone: '+94 77 123 4567',
-		date: '2025-11-10',
-		time: '10:30 AM',
-		items: [
-			{ name: 'Classic Heat', sku: 'CH-250', quantity: 2, price: 1100 },
-			{ name: 'Extreme Fire', sku: 'EF-200', quantity: 1, price: 1300 }
-		],
-		subtotal: 3500,
-		delivery: 300,
-		total: 3800,
-		status: 'Pending',
-		paymentMethod: 'Cash on Delivery',
-		shippingAddress: '123 Main Street, Colombo 07'
-	},
-	{
-		id: 'ORD-002',
-		customerName: 'Jane Smith',
-		email: 'jane@example.com',
-		phone: '+94 71 987 6543',
-		date: '2025-11-09',
-		time: '02:15 PM',
-		items: [
-			{ name: 'Garlic Fusion', sku: 'GF-250', quantity: 3, price: 1200 }
-		],
-		subtotal: 3600,
-		delivery: 300,
-		total: 3900,
-		status: 'Completed',
-		paymentMethod: 'Card',
-		shippingAddress: '456 Park Avenue, Kandy'
-	},
-	{
-		id: 'ORD-003',
-		customerName: 'Michael Johnson',
-		email: 'michael@example.com',
-		phone: '+94 76 555 1234',
-		date: '2025-11-09',
-		time: '11:45 AM',
-		items: [
-			{ name: 'Smoky Mango Blaze', sku: 'MB-200', quantity: 2, price: 1450 },
-			{ name: 'Classic Heat', sku: 'CH-250', quantity: 1, price: 1100 }
-		],
-		subtotal: 4000,
-		delivery: 300,
-		total: 4300,
-		status: 'Processing',
-		paymentMethod: 'Cash on Delivery',
-		shippingAddress: '789 Beach Road, Galle'
-	},
-	{
-		id: 'ORD-004',
-		customerName: 'Sarah Williams',
-		email: 'sarah@example.com',
-		phone: '+94 75 222 8899',
-		date: '2025-11-08',
-		time: '04:20 PM',
-		items: [
-			{ name: 'Coconut Fire Relish', sku: 'CF-180', quantity: 4, price: 980 }
-		],
-		subtotal: 3920,
-		delivery: 300,
-		total: 4220,
-		status: 'Cancelled',
-		paymentMethod: 'Card',
-		shippingAddress: '321 Hill Street, Nuwara Eliya'
-	},
-	{
-		id: 'ORD-005',
-		customerName: 'David Brown',
-		email: 'david@example.com',
-		phone: '+94 77 333 4455',
-		date: '2025-11-08',
-		time: '09:00 AM',
-		items: [
-			{ name: 'Classic Heat', sku: 'CH-250', quantity: 5, price: 1100 },
-			{ name: 'Extreme Fire', sku: 'EF-200', quantity: 2, price: 1300 }
-		],
-		subtotal: 8100,
-		delivery: 300,
-		total: 8400,
-		status: 'Completed',
-		paymentMethod: 'Cash on Delivery',
-		shippingAddress: '555 Market Street, Negombo'
-	}
-];
-
 const statusStyles = {
 	Pending: 'bg-amber-700/25 text-amber-200',
+	Paid: 'bg-blue-700/25 text-blue-300',
 	Processing: 'bg-blue-700/25 text-blue-300',
 	Completed: 'bg-green-700/25 text-green-300',
 	Cancelled: 'bg-red-700/25 text-red-300',
@@ -129,7 +26,9 @@ const statusStyles = {
 };
 
 const Orders = () => {
-	const [orders] = React.useState(orderData);
+	const [orders, setOrders] = React.useState([]);
+	const [availableProducts, setAvailableProducts] = React.useState([]);
+	const [loading, setLoading] = React.useState(true);
 	const [selectedOrder, setSelectedOrder] = React.useState(null);
 	const [showBillModal, setShowBillModal] = React.useState(false);
 	const [showQuickBillModal, setShowQuickBillModal] = React.useState(false);
@@ -141,6 +40,38 @@ const Orders = () => {
 		items: [{ productId: '', product: '', quantity: 1, price: 0 }],
 		deliveryFee: 300
 	});
+
+	// Fetch orders and products from backend
+	React.useEffect(() => {
+		const fetchData = async () => {
+			try {
+				const [ordersRes, productsRes] = await Promise.all([
+					fetch('http://localhost/backend/admin/api/get-orders.php'),
+					fetch('http://localhost/backend/admin/api/get-products.php')
+				]);
+				const ordersData = await ordersRes.json();
+				const productsData = await productsRes.json();
+				
+				if (ordersData.success) {
+					setOrders(ordersData.data);
+				}
+				if (productsData.success) {
+					const productList = productsData.data.map(p => ({
+						id: p.id,
+						name: p.name,
+						sku: p.sku,
+						price: p.price
+					}));
+					setAvailableProducts(productList);
+				}
+			} catch (error) {
+				console.error('Failed to fetch data:', error);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchData();
+	}, []);
 
 	const orderSummary = React.useMemo(() => {
 		const totalRevenue = orders.reduce((sum, order) => 
@@ -223,7 +154,7 @@ const Orders = () => {
 		};
 	};
 
-	const handleGenerateQuickBill = () => {
+	const handleGenerateQuickBill = async () => {
 		// Validate form
 		if (!quickBillForm.customerName || !quickBillForm.phone) {
 			alert('Please enter customer name and phone number');
@@ -231,7 +162,7 @@ const Orders = () => {
 		}
 		
 		const hasValidItems = quickBillForm.items.some(item => 
-			item.product && item.quantity > 0 && item.price > 0
+			item.productId && item.quantity > 0 && item.price > 0
 		);
 		
 		if (!hasValidItems) {
@@ -239,33 +170,81 @@ const Orders = () => {
 			return;
 		}
 
-		// Create order object from quick bill form
-		const { subtotal, delivery, total } = calculateQuickBillTotal();
-		const now = new Date();
-		const quickOrder = {
-			id: `QB-${Date.now()}`,
-			customerName: quickBillForm.customerName,
-			email: 'Walk-in Customer',
-			phone: quickBillForm.phone,
-			date: now.toISOString().split('T')[0],
-			time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-			items: quickBillForm.items.filter(item => item.product && item.quantity > 0 && item.price > 0).map(item => ({
-				name: item.product,
-				sku: 'CUSTOM',
-				quantity: item.quantity,
-				price: item.price
-			})),
-			subtotal,
-			delivery,
-			total,
-			status: 'Completed',
-			paymentMethod: quickBillForm.paymentMethod,
-			shippingAddress: quickBillForm.address || 'N/A'
-		};
+		try {
+			// Calculate totals
+			const { subtotal, delivery, total } = calculateQuickBillTotal();
+			
+			// Prepare order data for backend
+			const orderData = {
+				userId: null, // Walk-in customer
+				paymentMethod: quickBillForm.paymentMethod,
+				status: 'Completed',
+				total,
+				notes: `Walk-in customer: ${quickBillForm.customerName}, Phone: ${quickBillForm.phone}, Address: ${quickBillForm.address || 'N/A'}`,
+				items: quickBillForm.items
+					.filter(item => item.productId && item.quantity > 0)
+					.map(item => ({
+						productId: item.productId,
+						quantity: item.quantity,
+						price: item.price
+					}))
+			};
 
-		setSelectedOrder(quickOrder);
-		setShowQuickBillModal(false);
-		setShowBillModal(true);
+			// Save order to backend
+			const response = await fetch('http://localhost/backend/admin/api/add-order.php', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(orderData)
+			});
+
+			const result = await response.json();
+
+			if (result.success) {
+				// Create order object for bill display
+				const now = new Date();
+				const quickOrder = {
+					id: result.orderNumber,
+					orderId: result.orderId,
+					customerName: quickBillForm.customerName,
+					email: 'Walk-in Customer',
+					phone: quickBillForm.phone,
+					date: now.toISOString().split('T')[0],
+					time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+					items: quickBillForm.items
+						.filter(item => item.productId && item.quantity > 0)
+						.map(item => ({
+							name: item.product,
+							sku: item.productId,
+							quantity: item.quantity,
+							price: item.price
+						})),
+					subtotal,
+					delivery,
+					total,
+					status: 'Completed',
+					paymentMethod: quickBillForm.paymentMethod,
+					shippingAddress: quickBillForm.address || 'N/A'
+				};
+
+				// Refresh orders list
+				const ordersRes = await fetch('http://localhost/backend/admin/api/get-orders.php');
+				const ordersData = await ordersRes.json();
+				if (ordersData.success) {
+					setOrders(ordersData.data);
+				}
+
+				setSelectedOrder(quickOrder);
+				setShowQuickBillModal(false);
+				setShowBillModal(true);
+			} else {
+				alert('Error creating order: ' + (result.error || 'Unknown error'));
+			}
+		} catch (error) {
+			console.error('Failed to create order:', error);
+			alert('Failed to create order. Please try again.');
+		}
 	};
 
 	const resetQuickBillForm = () => {
@@ -281,6 +260,12 @@ const Orders = () => {
 
 	return (
 		<div className="space-y-6 print:space-y-0">
+			{loading ? (
+				<div className="flex items-center justify-center py-20">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+				</div>
+			) : (
+				<>
 			<style>{`
 				@media print {
 					@page {
@@ -617,7 +602,7 @@ const Orders = () => {
 											<option value="Cash on Delivery" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Cash on Delivery</option>
 											<option value="Cash" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Cash</option>
 											<option value="Card" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Card</option>
-											<option value="Bank Transfer" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Bank Transfer</option>
+											<option value="Credit" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Credit</option>
 										</select>
 									</label>
 								</div>
@@ -747,8 +732,11 @@ const Orders = () => {
 					</div>
 				</div>
 			)}
+			</>
+		)}
 		</div>
 	);
+	// Close component function
 };
 
 export default Orders;

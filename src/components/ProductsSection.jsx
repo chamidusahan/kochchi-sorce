@@ -6,18 +6,18 @@ import { ShoppingCart, Truck } from 'lucide-react';
 const products = [
   {
     id: 1,
-    name: 'Classic Heat',
+    name: 'Red Chili Sauce',
     size: '250ml',
-    price: 1100,
+    price: 1150,
     image: 'public/images/productinfo.jpg',
     description: 'Our signature hot sauce with the perfect balance of heat and flavor',
   },
   {
     id: 2,
-    name: 'Extreme Fire',
-    size: '200ml',
-    price: 1300,
-    image: 'https://www.pngall.com/wp-content/uploads/5/Hot-Sauce-Bottle-Transparent.png',
+    name: 'Green Chillie Blast',
+    size: '250ml',
+    price: 1100,
+    image: 'public/images/2.png',
     description: 'For the brave souls who crave intense heat with every drop',
   },
   {

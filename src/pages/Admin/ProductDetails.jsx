@@ -91,6 +91,7 @@ const ProductDetails = () => {
 		imageFile: null,
 		imagePreview: ''
 	});
+	const [editingProductId, setEditingProductId] = React.useState(null); // null = add, id = edit
 	const [stockForm, setStockForm] = React.useState(() => ({
 		productId: '',
 		changeType: 'IN',
@@ -102,7 +103,7 @@ const ProductDetails = () => {
 	const [stockError, setStockError] = React.useState('');
 	const autoNoteRef = React.useRef('');
 
-	const statusOptions = ['Draft', 'Live', 'Archived'];
+	const statusOptions = ['Draft','Active','Out of Stock','Archived','Discontinued'];
 	const changeTypes = [
 		{ value: 'IN', label: 'Incoming stock' },
 		{ value: 'OUT', label: 'Stock deduction' },
@@ -315,7 +316,6 @@ const ProductDetails = () => {
 
 	const handleProductSubmit = async (event) => {
 		event.preventDefault();
-		
 		try {
 			const formData = new FormData();
 			formData.append('name', productForm.name);
@@ -323,27 +323,32 @@ const ProductDetails = () => {
 			formData.append('category', productForm.category);
 			formData.append('status', productForm.status);
 			formData.append('price', productForm.price);
-			
 			if (productForm.imageFile) {
 				formData.append('image', productForm.imageFile);
 			}
-			
-			const response = await fetch('http://localhost/backend/admin/api/add-product.php', {
-				method: 'POST',
+			let url, method;
+			if (editingProductId) {
+				// Edit mode
+				formData.append('id', editingProductId);
+				url = 'http://localhost/backend/admin/api/update-product.php';
+				method = 'POST';
+			} else {
+				// Add mode
+				url = 'http://localhost/backend/admin/api/add-product.php';
+				method = 'POST';
+			}
+			const response = await fetch(url, {
+				method,
 				body: formData
 			});
-			
 			const result = await response.json();
-			
 			if (result.success) {
 				// Refresh product list
 				const productsResponse = await fetch('http://localhost/backend/admin/api/get-products.php');
 				const productsResult = await productsResponse.json();
-				
 				if (productsResult.success) {
 					setProductList(productsResult.data);
 				}
-				
 				// Reset form and close modal
 				setProductForm({
 					name: '',
@@ -354,15 +359,53 @@ const ProductDetails = () => {
 					imageFile: null,
 					imagePreview: ''
 				});
+				setEditingProductId(null);
 				setShowProductModal(false);
-				
-				alert('Product added successfully!');
+				alert(editingProductId ? 'Product updated successfully!' : 'Product added successfully!');
 			} else {
 				alert('Error: ' + result.error);
 			}
 		} catch (error) {
-			console.error('Failed to add product:', error);
-			alert('Failed to add product. Please try again.');
+			console.error('Failed to save product:', error);
+			alert('Failed to save product. Please try again.');
+		}
+	};
+
+	const handleDeleteProduct = async (productId) => {
+		const confirmed = window.confirm('Delete this product permanently?');
+		if (!confirmed) return;
+		try {
+			const formData = new FormData();
+			formData.append('id', productId);
+			const response = await fetch('http://localhost/backend/admin/api/delete-product.php', {
+				method: 'POST',
+				body: formData
+			});
+			const result = await response.json();
+			if (result.success) {
+				// Refresh list
+				const productsResponse = await fetch('http://localhost/backend/admin/api/get-products.php');
+				const productsResult = await productsResponse.json();
+				if (productsResult.success) {
+					setProductList(productsResult.data);
+					setStockForm(prev => {
+						if (String(prev.productId) === String(productId)) {
+							return {
+								...prev,
+								productId: productsResult.data[0]?.id ?? '',
+								reference: generateReferenceByType(prev.changeType)
+							};
+						}
+						return prev;
+					});
+				}
+				alert('Product deleted successfully!');
+			} else {
+				alert('Error: ' + (result.error || 'Failed to delete product'));
+			}
+		} catch (error) {
+			console.error('Failed to delete product:', error);
+			alert('Failed to delete product. Please try again.');
 		}
 	};
 
@@ -470,55 +513,65 @@ const ProductDetails = () => {
 		return `${productForm.imageFile.name} · ${displaySize}`;
 	}, [productForm.imageFile]);
 
-	return (
-		<div className="space-y-6">
-			{loading ? (
-				<div className="flex items-center justify-center py-20">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-				</div>
-			) : (
-				<>
-			<section className="bg-black/80 rounded-2xl p-4 md:p-6 shadow-lg border border-gray-800/50 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<div className="w-full lg:max-w-xl flex flex-col gap-3 sm:flex-row sm:items-center">
-					<div className="relative flex-1">
-						<Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
-						<input
-							type="text"
-							placeholder="Search products, SKUs or tags..."
-							className="w-full bg-gray-900/70 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/70"
-						/>
-					</div>
-					<select
-						className="bg-gray-900/70 border border-gray-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/70"
-						style={{ backgroundColor: '#0f141c', color: '#fff' }}
-					>
-						<option value="" style={{ backgroundColor: '#0f141c', color: '#fff' }}>All categories</option>
-						<option value="Hot Sauce" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Hot Sauce</option>
-						<option value="Specialty" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Specialty</option>
-						<option value="Limited" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Limited</option>
-					</select>
-				</div>
-				<div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:items-center justify-end">
-					<button
-						onClick={() => {
-							setShowProductModal(true);
-						}}
-						className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-3 rounded-xl transition"
-					>
-						<Plus size={18} />
-						<span>Add Product</span>
-					</button>
-					<button
-						onClick={() => {
-							setShowStockModal(true);
-						}}
-						className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white font-semibold px-4 py-3 rounded-xl transition border border-white/10 backdrop-blur-sm"
-					>
-						<PackagePlus size={18} />
-						<span>Update Stock</span>
-					</button>
-				</div>
-			</section>
+	   return (
+		   <div className="space-y-6">
+			   {loading ? (
+				   <div className="flex items-center justify-center py-20">
+					   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+				   </div>
+			   ) : (
+				   <>
+			   <section className="bg-black/80 rounded-2xl p-4 md:p-6 shadow-lg border border-gray-800/50 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				   <div className="w-full lg:max-w-xl flex flex-col gap-3 sm:flex-row sm:items-center">
+					   <div className="relative flex-1">
+						   <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+						   <input
+							   type="text"
+							   placeholder="Search products, SKUs or tags..."
+							   className="w-full bg-gray-900/70 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/70"
+						   />
+					   </div>
+					   <select
+						   className="bg-gray-900/70 border border-gray-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/70"
+						   style={{ backgroundColor: '#0f141c', color: '#fff' }}
+					   >
+						   <option value="" style={{ backgroundColor: '#0f141c', color: '#fff' }}>All categories</option>
+						   <option value="Hot Sauce" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Hot Sauce</option>
+						   <option value="Specialty" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Specialty</option>
+						   <option value="Limited" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Limited</option>
+					   </select>
+				   </div>
+				   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:items-center justify-end">
+					   <button
+						   onClick={() => {
+							   setEditingProductId(null);
+							   setProductForm({
+								   name: '',
+								   sku: '',
+								   category: '',
+								   status: 'Draft',
+								   price: '',
+								   imageFile: null,
+								   imagePreview: ''
+							   });
+							   setShowProductModal(true);
+						   }}
+						   className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-3 rounded-xl transition"
+					   >
+						   <Plus size={18} />
+						   <span>Add Product</span>
+					   </button>
+					   <button
+						   onClick={() => {
+							   setShowStockModal(true);
+						   }}
+						   className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white font-semibold px-4 py-3 rounded-xl transition border border-white/10 backdrop-blur-sm"
+					   >
+						   <PackagePlus size={18} />
+						   <span>Update Stock</span>
+					   </button>
+				   </div>
+			   </section>
 
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 				{productSummary.map(({ label, value, delta, icon: Icon, accent, border }) => (
@@ -588,13 +641,28 @@ const ProductDetails = () => {
 											<td className="py-3 px-4 text-white/60">{product.updated}</td>
 											<td className="py-3 px-4">
 												<div className="flex justify-end gap-2">
-													<button className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs flex items-center gap-1">
+													<button
+														className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs flex items-center gap-1"
+														onClick={() => {
+															setEditingProductId(product.id);
+															setProductForm({
+																name: product.name || '',
+																sku: product.sku || '',
+																category: product.category || '',
+																status: product.status || 'Draft',
+																price: product.price ? String(product.price) : '',
+																imageFile: null,
+																imagePreview: product.image || ''
+															});
+															setShowProductModal(true);
+														}}
+													>
 														<Edit size={14} />
 														<span>Edit</span>
 													</button>
 													<button className="px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 text-xs flex items-center gap-1">
 														<Trash2 size={14} />
-														<span>Delete</span>
+														<span onClick={() => handleDeleteProduct(product.id)}>Delete</span>
 													</button>
 												</div>
 											</td>
@@ -637,12 +705,15 @@ const ProductDetails = () => {
 					<div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0f141c] p-6 sm:p-8 text-white shadow-[0_20px_45px_-20px_rgba(255,255,255,0.45)] overflow-y-auto max-h-[90vh]">
 						<div className="flex items-start justify-between gap-4 mb-6">
 							<div>
-								<p className="text-xs font-semibold uppercase tracking-[0.35em] text-red-300">Create product</p>
-								<h3 className="mt-2 text-2xl font-semibold">Add a new catalogue item</h3>
+								<p className="text-xs font-semibold uppercase tracking-[0.35em] text-red-300">{editingProductId ? 'Edit product' : 'Create product'}</p>
+								<h3 className="mt-2 text-2xl font-semibold">{editingProductId ? 'Edit catalogue item' : 'Add a new catalogue item'}</h3>
 								<p className="mt-1 text-sm text-white/60">Define pricing, availability, and stock thresholds for automatic alerts.</p>
 							</div>
 							<button
-								onClick={() => setShowProductModal(false)}
+								onClick={() => {
+									setShowProductModal(false);
+									setEditingProductId(null);
+								}}
 								className="rounded-full border border-white/10 p-2 text-white/70 hover:text-white hover:border-white/30 transition"
 							>
 								<X size={18} />

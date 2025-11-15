@@ -14,6 +14,7 @@ import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
 import LoginSignup from "./pages/LoginSignup";
 import OrderNow from "./pages/OrderNow";
+import MyOrders from "./pages/MyOrders";
 import { useEffect } from "react";
 import AdminLogin from "./pages/Admin/AdminLogin";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -38,6 +39,7 @@ function App() {
           } />
           <Route path="/login" element={<><Navbar /><LoginSignup /></>} />
           <Route path="/order" element={<><Navbar /><OrderNow /></>} />
+          <Route path="/my-orders" element={<><Navbar /><MyOrders /></>} />
 
           {/*admin routes*/} 
           <Route path="/admin-login" element={<AdminLogin />} />

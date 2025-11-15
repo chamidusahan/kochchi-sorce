@@ -54,6 +54,7 @@ const OrderNow = () => {
               heat: '',
               price: Number(p.price) || 0,
               stock: typeof p.stock !== 'undefined' ? Number(p.stock) || 0 : 0,
+              sku: p.sku || '',
             }));
           if (isMounted) {
             setDbProducts(mapped);
@@ -139,8 +140,13 @@ const OrderNow = () => {
         paymentStatus: 'Pending',
         shippingPhone: form.phone,
         shippingAddress: form.address,
-        // Optional: append product + qty in address notes for now
-        // comment: no separate order_items table in current schema
+        items: [{
+          productId: isCustomProduct ? 0 : parseInt(form.product),
+          sku: isCustomProduct ? 'CUSTOM' : (selectedProduct?.sku || ''),
+          quantity: quantity,
+          price: unitPrice,
+          subtotal: subTotal
+        }]
       };
 
       const res = await fetch('http://localhost/backend/user/api/create-order.php', {
@@ -324,7 +330,7 @@ const OrderNow = () => {
                             key={option.value}
                             className={`relative flex ${out ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} flex-col rounded-2xl border ${active ? "border-red-500 bg-red-600/15" : "border-white/10 bg-white/5 hover:border-red-400/60"} p-4 transition`}
                           >
-                            <input
+                            <inputnpm run dev
                               type="radio"
                               name="product"
                               value={option.value}

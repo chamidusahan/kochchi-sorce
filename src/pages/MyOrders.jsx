@@ -204,6 +204,30 @@ const MyOrders = () => {
                       <p className="text-sm text-white/80">{order.shippingAddress}</p>
                     </div>
                   </div>
+
+                  {/* Order Items */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="sm:col-span-2 mt-4 pt-4 border-t border-white/10">
+                      <p className="text-xs uppercase tracking-wider text-white/50 mb-3">Order Items</p>
+                      <div className="space-y-2">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-white">{item.productName}</p>
+                              <p className="text-xs text-white/50">{item.category || item.sku}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-white/80">Qty: {item.quantity}</p>
+                              <p className="text-xs text-white/60">{formatCurrency(item.price)} each</p>
+                            </div>
+                            <div className="ml-4 text-right">
+                              <p className="text-sm font-semibold text-red-400">{formatCurrency(item.subtotal)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

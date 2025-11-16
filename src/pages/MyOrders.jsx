@@ -48,6 +48,32 @@ const MyOrders = () => {
     }
   };
 
+  const cancelOrder = async (orderId) => {
+    if (!confirm("Are you sure you want to cancel this order?")) {
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost/backend/user/api/cancel-order.php", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // Refresh orders list
+        fetchOrders();
+      } else {
+        alert(data.message || "Failed to cancel order");
+      }
+    } catch (err) {
+      console.error("Cancel order error:", err);
+      alert("Failed to cancel order. Please try again.");
+    }
+  };
+
   const formatCurrency = (amount) => `Rs. ${parseFloat(amount).toLocaleString()}`;
   
   const formatDate = (dateString) => {
@@ -154,6 +180,14 @@ const MyOrders = () => {
                       >
                         {order.paymentStatus}
                       </span>
+                      {order.paymentStatus === 'Pending' && (
+                        <button
+                          onClick={() => cancelOrder(order.orderId)}
+                          className="px-3 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 text-xs font-semibold transition-colors border border-red-500/40"
+                        >
+                          Cancel Order
+                        </button>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-white/60">
                       <Calendar size={14} />

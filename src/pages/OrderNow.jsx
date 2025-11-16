@@ -330,12 +330,13 @@ const OrderNow = () => {
                             key={option.value}
                             className={`relative flex ${out ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} flex-col rounded-2xl border ${active ? "border-red-500 bg-red-600/15" : "border-white/10 bg-white/5 hover:border-red-400/60"} p-4 transition`}
                           >
-                            <inputnpm run dev
+                            <input
                               type="radio"
                               name="product"
                               value={option.value}
                               className="sr-only"
                               disabled={out}
+                              checked={active}
                               onChange={() => handleRadioChange("product", option.value)}
                             />
                             <span className="flex items-center justify-between text-white">

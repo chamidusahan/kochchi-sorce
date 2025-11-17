@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, User, LogOut, X } from "lucide-react";
+import { Flame, User, LogOut, X, ChevronDown } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -11,6 +11,8 @@ const Navbar = () => {
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef(null);
 
   // Track scroll position
   useEffect(() => {
@@ -19,6 +21,17 @@ const Navbar = () => {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const onClick = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
   // Smooth scroll handler
@@ -114,22 +127,42 @@ const Navbar = () => {
                 <div className="h-5 w-5 border border-white/40 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : user ? (
-              <div className="flex items-center gap-3">
+              <div className="relative" ref={profileRef}>
                 <button
-                  onClick={() => navigate("/my-orders")}
-                  className="px-4 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-300 text-sm font-semibold transition-colors"
+                  className="flex items-center gap-2 rounded-full hover:bg-white/10 p-1.5"
+                  onClick={() => setProfileOpen((o) => !o)}
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
                 >
-                  My Orders
+                  {renderAvatar()}
+                  <ChevronDown size={16} className={`text-white transition ${profileOpen ? 'rotate-180' : ''}`} />
                 </button>
-                {renderAvatar()}
-                <button
-                  aria-label="Log out"
-                  className="p-2 rounded-full hover:bg-white/10 transition-colors flex items-center space-x-2"
-                  onClick={() => logout().catch(() => {})}
-                >
-                  <LogOut size={18} className="text-white" />
-                  <span className="text-sm text-white">Sign out</span>
-                </button>
+                <AnimatePresence>
+                  {profileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-48 rounded-xl border border-white/10 bg-black/95 shadow-lg p-1"
+                    >
+                      <button
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-white hover:bg-white/10"
+                        onClick={() => { setProfileOpen(false); navigate('/my-orders'); }}
+                      >
+                        <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                        <span>My Orders</span>
+                      </button>
+                      <button
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-600/10"
+                        onClick={() => { setProfileOpen(false); logout().catch(() => {}); }}
+                      >
+                        <LogOut size={16} />
+                        <span>Sign out</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
               <button

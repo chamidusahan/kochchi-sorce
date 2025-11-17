@@ -17,6 +17,9 @@ const formatCurrency = (amount) => `Rs. ${amount.toLocaleString()}`;
 const createInitialForm = () => ({
   name: "",
   address: "",
+  city: "",
+  district: "",
+  postalCode: "",
   phone: "",
   product: "", // set after products load
   otherProduct: "",
@@ -73,6 +76,34 @@ const OrderNow = () => {
     return () => { isMounted = false; };
   }, []);
 
+  // Auto-fill address for returning users
+  useEffect(() => {
+    if (!user) return;
+    let isMounted = true;
+    const fetchLatestAddress = async () => {
+      try {
+        const res = await fetch('http://localhost/backend/user/api/get-latest-address.php', {
+          credentials: 'include',
+        });
+        const data = await res.json();
+        if (data?.success && data.data && isMounted) {
+          setForm(prev => ({
+            ...prev,
+            address: data.data.address || '',
+            city: data.data.city || '',
+            district: data.data.district || '',
+            postalCode: data.data.postalCode || '',
+            phone: data.data.phone || prev.phone
+          }));
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchLatestAddress();
+    return () => { isMounted = false; };
+  }, [user]);
+
   const productOptions = useMemo(() => {
     return [...dbProducts, CUSTOM_OPTION];
   }, [dbProducts]);
@@ -89,6 +120,9 @@ const OrderNow = () => {
     const e = {};
     if (!form.name.trim()) e.name = "Name is required";
     if (!form.address.trim()) e.address = "Address is required";
+    if (!form.city.trim()) e.city = "City is required";
+    if (!form.district.trim()) e.district = "District is required";
+    if (!/^[0-9]{5}$/.test(form.postalCode.trim())) e.postalCode = "Please enter a valid 5-digit postal code";
     if (!/^\+?[0-9\s-]{7,15}$/.test(form.phone.trim())) e.phone = "Please enter a valid phone number";
     if (!form.product) e.product = "Please choose a product";
     if (isCustomProduct && !form.otherProduct.trim()) e.otherProduct = "Let us know which blend you need";
@@ -140,6 +174,9 @@ const OrderNow = () => {
         paymentStatus: 'Pending',
         shippingPhone: form.phone,
         shippingAddress: form.address,
+        city: form.city,
+        district: form.district,
+        postalCode: form.postalCode,
         items: [{
           productId: isCustomProduct ? 0 : parseInt(form.product),
           sku: isCustomProduct ? 'CUSTOM' : (selectedProduct?.sku || ''),
@@ -282,11 +319,48 @@ const OrderNow = () => {
                         name="address"
                         value={form.address}
                         onChange={handleChange}
-                        rows={3}
-                        placeholder="House number, street, city"
+                        rows={2}
+                        placeholder="House number, street name"
                         className="mt-2 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-400 focus:outline-none"
                       />
                       {errors.address && <p className="mt-1 text-sm text-red-300">{errors.address}</p>}
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold text-white/80">City</label>
+                      <input
+                        name="city"
+                        value={form.city}
+                        onChange={handleChange}
+                        placeholder="E.g. Colombo"
+                        className="mt-2 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-400 focus:outline-none"
+                      />
+                      {errors.city && <p className="mt-1 text-sm text-red-300">{errors.city}</p>}
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold text-white/80">District</label>
+                      <input
+                        name="district"
+                        value={form.district}
+                        onChange={handleChange}
+                        placeholder="E.g. Colombo"
+                        className="mt-2 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-400 focus:outline-none"
+                      />
+                      {errors.district && <p className="mt-1 text-sm text-red-300">{errors.district}</p>}
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold text-white/80">Postal code</label>
+                      <input
+                        name="postalCode"
+                        value={form.postalCode}
+                        onChange={handleChange}
+                        placeholder="E.g. 10100"
+                        maxLength={5}
+                        className="mt-2 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-400 focus:outline-none"
+                      />
+                      {errors.postalCode && <p className="mt-1 text-sm text-red-300">{errors.postalCode}</p>}
                     </div>
 
                     <div>

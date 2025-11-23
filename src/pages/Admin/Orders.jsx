@@ -27,11 +27,15 @@ const statusStyles = {
 
 const Orders = () => {
 	const [orders, setOrders] = React.useState([]);
+    const [updatingId, setUpdatingId] = React.useState(null);
 	const [availableProducts, setAvailableProducts] = React.useState([]);
 	const [loading, setLoading] = React.useState(true);
 	const [selectedOrder, setSelectedOrder] = React.useState(null);
 	const [showBillModal, setShowBillModal] = React.useState(false);
 	const [showQuickBillModal, setShowQuickBillModal] = React.useState(false);
+	const [activeTab, setActiveTab] = React.useState('orders'); // 'orders' or 'bills'
+	const [myBills, setMyBills] = React.useState([]);
+	const [billFilter, setBillFilter] = React.useState('All');
 	const [quickBillForm, setQuickBillForm] = React.useState({
 		customerName: '',
 		phone: '',
@@ -45,12 +49,14 @@ const Orders = () => {
 	React.useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const [ordersRes, productsRes] = await Promise.all([
+				const [ordersRes, productsRes, billsRes] = await Promise.all([
 					fetch('http://localhost/backend/admin/api/get-orders.php'),
-					fetch('http://localhost/backend/admin/api/get-products.php')
+					fetch('http://localhost/backend/admin/api/get-products.php'),
+					fetch('http://localhost/backend/admin/api/get-bills.php')
 				]);
 				const ordersData = await ordersRes.json();
 				const productsData = await productsRes.json();
+				const billsData = await billsRes.json();
 				
 				if (ordersData.success) {
 					setOrders(ordersData.data);
@@ -64,6 +70,9 @@ const Orders = () => {
 					}));
 					setAvailableProducts(productList);
 				}
+				if (billsData.success) {
+					setMyBills(billsData.data);
+				}
 			} catch (error) {
 				console.error('Failed to fetch data:', error);
 			} finally {
@@ -73,19 +82,54 @@ const Orders = () => {
 		fetchData();
 	}, []);
 
+	const updateOrderStatus = async (orderId, nextStatus) => {
+		try {
+			setUpdatingId(orderId);
+			const res = await fetch('http://localhost/backend/admin/api/update-order-status.php', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ orderId, status: nextStatus })
+			});
+			const data = await res.json();
+			if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update');
+			// Optimistically update local state
+			setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
+		} catch (e) {
+			alert(e.message || 'Failed to update order status');
+		} finally {
+			setUpdatingId(null);
+		}
+	};
+
 	const orderSummary = React.useMemo(() => {
 		const totalRevenue = orders.reduce((sum, order) => 
 			order.status === 'Completed' ? sum + order.total : sum, 0
 		);
 		const pendingCount = orders.filter(o => o.status === 'Pending').length;
 		const completedCount = orders.filter(o => o.status === 'Completed').length;
+		const creditBillsCount = myBills.filter(b => b.paymentMethod === 'Credit').length;
 
 		return [
 			{ label: 'Total Revenue', value: `Rs. ${totalRevenue.toLocaleString()}`, delta: 'From completed orders', icon: DollarSign, accent: 'text-green-400', border: 'border-green-700/60' },
 			{ label: 'Pending Orders', value: String(pendingCount), delta: 'Awaiting processing', icon: Clock, accent: 'text-amber-300', border: 'border-amber-700/60' },
 			{ label: 'Completed', value: String(completedCount), delta: 'Successfully delivered', icon: CheckCircle, accent: 'text-green-300', border: 'border-green-700/60' },
+			{ label: 'Credit Bills', value: String(creditBillsCount), delta: 'Payment pending', icon: FileText, accent: 'text-orange-300', border: 'border-orange-700/60' },
 		];
-	}, [orders]);
+	}, [orders, myBills]);
+
+	const filteredBills = React.useMemo(() => {
+		if (billFilter === 'All') {
+			return myBills;
+		}
+
+		return myBills.filter(bill => {
+			const method = (bill.paymentMethod || '').toLowerCase();
+			if (billFilter === 'Cash') {
+				return method.includes('cash');
+			}
+			return method === billFilter.toLowerCase();
+		});
+	}, [billFilter, myBills]);
 
 	const handleGenerateBill = (order) => {
 		setSelectedOrder(order);
@@ -177,9 +221,13 @@ const Orders = () => {
 			// Prepare order data for backend
 			const orderData = {
 				userId: null, // Walk-in customer
+				customerName: quickBillForm.customerName,
+				customerPhone: quickBillForm.phone,
+				customerAddress: quickBillForm.address || '',
 				paymentMethod: quickBillForm.paymentMethod,
 				status: 'Completed',
 				total,
+				deliveryFee: delivery,
 				notes: `Walk-in customer: ${quickBillForm.customerName}, Phone: ${quickBillForm.phone}, Address: ${quickBillForm.address || 'N/A'}`,
 				items: quickBillForm.items
 					.filter(item => item.productId && item.quantity > 0)
@@ -235,9 +283,23 @@ const Orders = () => {
 					setOrders(ordersData.data);
 				}
 
+				// Add the generated bill to My Bills list
+				setMyBills(prev => [quickOrder, ...prev]);
+
+				try {
+					const billsRes = await fetch('http://localhost/backend/admin/api/get-bills.php');
+					const billsData = await billsRes.json();
+					if (billsData.success) {
+						setMyBills(billsData.data);
+					}
+				} catch (refreshError) {
+					console.error('Failed to refresh bills list:', refreshError);
+				}
+
 				setSelectedOrder(quickOrder);
 				setShowQuickBillModal(false);
 				setShowBillModal(true);
+				resetQuickBillForm();
 			} else {
 				alert('Error creating order: ' + (result.error || 'Unknown error'));
 			}
@@ -317,16 +379,16 @@ const Orders = () => {
 				</div>
 				<button
 					onClick={() => setShowQuickBillModal(true)}
-					className="flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-500 hover:brightness-110 text-white font-semibold px-4 py-3 rounded-xl transition shadow-lg shadow-green-900/40"
+					className="flex items-center justify-center gap-2 bg-linear-to-r from-green-600 to-green-500 hover:brightness-110 text-white font-semibold px-4 py-3 rounded-xl transition shadow-lg shadow-green-900/40"
 				>
 					<Plus size={18} />
 					<span>Quick Bill</span>
 				</button>
 			</section>
 
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
 				{orderSummary.map(({ label, value, delta, icon: Icon, accent, border }) => (
-					<div key={label} className={`bg-gradient-to-br from-black/80 to-[#131822] border ${border} rounded-2xl p-5 shadow-lg flex flex-col gap-3`}>
+					<div key={label} className={`bg-linear-to-br from-black/80 to-[#131822] border ${border} rounded-2xl p-5 shadow-lg flex flex-col gap-3`}>
 						<span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-red-600/10 ${accent}`}>
 							<Icon size={20} />
 						</span>
@@ -337,77 +399,217 @@ const Orders = () => {
 				))}
 			</div>
 
+			{/* Tab Navigation */}
 			<section className="bg-black/80 rounded-2xl p-4 md:p-6 shadow-lg border border-gray-800/50 print:hidden">
-				<div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-					<h2 className="text-base md:text-lg font-bold text-white">Recent Orders</h2>
-					<div className="flex flex-wrap gap-2">
-						<button className="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-300 text-xs font-semibold">All</button>
-						<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Pending</button>
-						<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Processing</button>
-						<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Completed</button>
-					</div>
+				<div className="flex items-center gap-2 mb-4 border-b border-gray-800/50 pb-1">
+					<button
+						onClick={() => setActiveTab('orders')}
+						className={`px-4 py-2 rounded-t-lg text-sm font-semibold transition ${
+							activeTab === 'orders' 
+								? 'bg-red-600/20 text-red-300 border-b-2 border-red-500' 
+								: 'text-white/60 hover:text-white/90'
+						}`}
+					>
+						Recent Orders
+					</button>
+					<button
+						onClick={() => setActiveTab('bills')}
+						className={`px-4 py-2 rounded-t-lg text-sm font-semibold transition ${
+							activeTab === 'bills' 
+								? 'bg-red-600/20 text-red-300 border-b-2 border-red-500' 
+								: 'text-white/60 hover:text-white/90'
+						}`}
+					>
+						My Bills
+					</button>
 				</div>
-				<div className="overflow-x-auto -mx-4 md:mx-0">
-					<table className="min-w-full text-left text-sm text-white/90">
-						<thead>
-							<tr className="border-b border-gray-800/60 text-white/60">
-								<th className="py-3 px-4 font-medium">Order ID</th>
-								<th className="py-3 px-4 font-medium">Customer</th>
-								<th className="py-3 px-4 font-medium">Date</th>
-								<th className="py-3 px-4 font-medium">Items</th>
-								<th className="py-3 px-4 font-medium">Total</th>
-								<th className="py-3 px-4 font-medium">Status</th>
-								<th className="py-3 px-4 font-medium text-right">Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{orders.map((order) => {
-								const badgeStyle = statusStyles[order.status] ?? statusStyles.default;
-								return (
-									<tr key={order.id} className="border-b border-gray-800/40 last:border-none">
-										<td className="py-3 px-4">
-											<span className="font-semibold text-white">{order.id}</span>
-										</td>
-										<td className="py-3 px-4">
-											<div>
-												<p className="font-semibold text-white">{order.customerName}</p>
-												<span className="text-xs text-white/50">{order.email}</span>
-											</div>
-										</td>
-										<td className="py-3 px-4 text-white/70">
-											<div>
-												<p>{order.date}</p>
-												<span className="text-xs text-white/50">{order.time}</span>
-											</div>
-										</td>
-										<td className="py-3 px-4 text-white/80">{order.items.length} item(s)</td>
-										<td className="py-3 px-4 text-white font-semibold">Rs. {order.total.toLocaleString()}</td>
-										<td className="py-3 px-4">
-											<span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}>
-												{order.status}
-											</span>
-										</td>
-										<td className="py-3 px-4">
-											<div className="flex justify-end gap-2">
-												<button 
-													onClick={() => handleGenerateBill(order)}
-													className="px-3 py-1.5 rounded-lg bg-green-600/20 hover:bg-green-600/30 text-green-300 text-xs flex items-center gap-1"
-												>
-													<FileText size={14} />
-													<span>Bill</span>
-												</button>
-												<button className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs flex items-center gap-1">
-													<Eye size={14} />
-													<span>View</span>
-												</button>
-											</div>
-										</td>
+
+				{/* Orders Tab Content */}
+				{activeTab === 'orders' && (
+					<>
+						<div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+							<h2 className="text-base md:text-lg font-bold text-white">All Customer Orders</h2>
+							<div className="flex flex-wrap gap-2">
+								<button className="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-300 text-xs font-semibold">All</button>
+								<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Pending</button>
+								<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Processing</button>
+								<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Completed</button>
+							</div>
+						</div>
+						<div className="overflow-x-auto -mx-4 md:mx-0">
+							<table className="min-w-full text-left text-sm text-white/90">
+								<thead>
+									<tr className="border-b border-gray-800/60 text-white/60">
+										<th className="py-3 px-4 font-medium">Order ID</th>
+										<th className="py-3 px-4 font-medium">Customer</th>
+										<th className="py-3 px-4 font-medium">Date</th>
+										<th className="py-3 px-4 font-medium">Items</th>
+										<th className="py-3 px-4 font-medium">Total</th>
+										<th className="py-3 px-4 font-medium">Status</th>
+										<th className="py-3 px-4 font-medium text-right">Actions</th>
 									</tr>
-								);
-							})}
-						</tbody>
-					</table>
-				</div>
+								</thead>
+								<tbody>
+									{orders.map((order) => {
+										const badgeStyle = statusStyles[order.status] ?? statusStyles.default;
+										return (
+											<tr key={order.id} className="border-b border-gray-800/40 last:border-none">
+												<td className="py-3 px-4">
+													<span className="font-semibold text-white">{order.id}</span>
+												</td>
+												<td className="py-3 px-4">
+													<div>
+														<p className="font-semibold text-white">{order.customerName}</p>
+														<span className="text-xs text-white/50">{order.email}</span>
+													</div>
+												</td>
+												<td className="py-3 px-4 text-white/70">
+													<div>
+														<p>{order.date}</p>
+														<span className="text-xs text-white/50">{order.time}</span>
+													</div>
+												</td>
+												<td className="py-3 px-4 text-white/80">{order.items.length} item(s)</td>
+												<td className="py-3 px-4 text-white font-semibold">Rs. {order.total.toLocaleString()}</td>
+												<td className="py-3 px-4">
+													<div className="flex items-center gap-2">
+														<span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}>{order.status}</span>
+														<select
+															disabled={updatingId === order.id}
+															value={order.status}
+															onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+															className="ml-2 bg-gray-900/70 border border-gray-800 rounded-md py-1 px-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-red-500/60"
+															style={{ backgroundColor: '#0f141c', color: '#fff' }}
+														>
+															<option value="Pending" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Pending</option>
+															<option value="Completed" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Completed</option>
+														</select>
+													</div>
+												</td>
+												<td className="py-3 px-4">
+													<div className="flex justify-end gap-2">
+														<button 
+															onClick={() => handleGenerateBill(order)}
+															className="px-3 py-1.5 rounded-lg bg-green-600/20 hover:bg-green-600/30 text-green-300 text-xs flex items-center gap-1"
+														>
+															<FileText size={14} />
+															<span>Bill</span>
+														</button>
+														<button className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs flex items-center gap-1">
+															<Eye size={14} />
+															<span>View</span>
+														</button>
+													</div>
+												</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+					</>
+				)}
+
+				{/* My Bills Tab Content */}
+				{activeTab === 'bills' && (
+					<>
+						<div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+							<h2 className="text-base md:text-lg font-bold text-white">Generated Bills</h2>
+							<div className="flex flex-wrap gap-2">
+								{['All', 'Cash', 'Credit', 'Card'].map(option => {
+									const isActive = billFilter === option;
+									const activeClasses = 'bg-red-600/20 text-red-300 border border-red-500/40';
+									const inactiveClasses = 'bg-gray-800/80 text-white/70 border border-gray-800 hover:text-white/90';
+									return (
+										<button
+											key={option}
+											onClick={() => setBillFilter(option)}
+											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${isActive ? activeClasses : inactiveClasses}`}
+										>
+											{option}
+										</button>
+									);
+								})}
+							</div>
+						</div>
+						<div className="overflow-x-auto -mx-4 md:mx-0">
+							<table className="min-w-full text-left text-sm text-white/90">
+								<thead>
+									<tr className="border-b border-gray-800/60 text-white/60">
+										<th className="py-3 px-4 font-medium">Bill ID</th>
+										<th className="py-3 px-4 font-medium">Customer</th>
+										<th className="py-3 px-4 font-medium">Date</th>
+										<th className="py-3 px-4 font-medium">Items</th>
+										<th className="py-3 px-4 font-medium">Total</th>
+										<th className="py-3 px-4 font-medium">Payment</th>
+										<th className="py-3 px-4 font-medium text-right">Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+									{filteredBills.length === 0 ? (
+										<tr>
+											<td colSpan="7" className="py-12 text-center text-white/50">
+												<FileText size={48} className="mx-auto mb-3 text-white/30" />
+												<p className="text-base font-semibold">No bills found</p>
+												<p className="text-sm mt-1">Try adjusting the filter or generate a new bill</p>
+											</td>
+										</tr>
+									) : (
+										filteredBills.map((bill) => {
+											const paymentBadgeStyle = bill.paymentMethod === 'Credit' 
+												? 'bg-orange-700/25 text-orange-300'
+												: bill.paymentMethod === 'Card'
+												? 'bg-blue-700/25 text-blue-300'
+												: 'bg-green-700/25 text-green-300';
+											
+											return (
+												<tr key={bill.id} className="border-b border-gray-800/40 last:border-none">
+													<td className="py-3 px-4">
+														<span className="font-semibold text-white">{bill.id}</span>
+													</td>
+													<td className="py-3 px-4">
+														<div>
+															<p className="font-semibold text-white">{bill.customerName}</p>
+															<span className="text-xs text-white/50">{bill.phone}</span>
+														</div>
+													</td>
+													<td className="py-3 px-4 text-white/70">
+														<div>
+															<p>{bill.date}</p>
+															<span className="text-xs text-white/50">{bill.time}</span>
+														</div>
+													</td>
+													<td className="py-3 px-4 text-white/80">{bill.items.length} item(s)</td>
+													<td className="py-3 px-4 text-white font-semibold">Rs. {bill.total.toLocaleString()}</td>
+													<td className="py-3 px-4">
+														<span className={`px-3 py-1 rounded-full text-xs font-semibold ${paymentBadgeStyle}`}>
+															{bill.paymentMethod}
+														</span>
+													</td>
+													<td className="py-3 px-4">
+														<div className="flex justify-end gap-2">
+															<button 
+																onClick={() => handleGenerateBill(bill)}
+																className="px-3 py-1.5 rounded-lg bg-green-600/20 hover:bg-green-600/30 text-green-300 text-xs flex items-center gap-1"
+															>
+																<Eye size={14} />
+																<span>View</span>
+															</button>
+															<button className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs flex items-center gap-1">
+																<Download size={14} />
+																<span>PDF</span>
+															</button>
+														</div>
+													</td>
+												</tr>
+											);
+										})
+									)}
+								</tbody>
+							</table>
+						</div>
+					</>
+				)}
 			</section>
 
 			{/* Bill Modal */}
@@ -512,7 +714,7 @@ const Orders = () => {
 							<div className="flex flex-col sm:flex-row gap-3 pt-4 print:hidden">
 								<button
 									onClick={handlePrintBill}
-									className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-900/40 hover:brightness-110"
+									className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-red-600 to-red-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-900/40 hover:brightness-110"
 								>
 									<FileText size={18} />
 									<span>Print Bill</span>
@@ -723,7 +925,7 @@ const Orders = () => {
 								</button>
 								<button
 									onClick={handleGenerateQuickBill}
-									className="flex-1 rounded-2xl bg-gradient-to-r from-green-600 to-green-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-900/40 hover:brightness-110 transition"
+									className="flex-1 rounded-2xl bg-linear-to-r from-green-600 to-green-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-900/40 hover:brightness-110 transition"
 								>
 									Generate Bill
 								</button>

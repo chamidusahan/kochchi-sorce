@@ -186,16 +186,41 @@ const RatingsSection = () => {
   };
 
   return (
-  <section id="ratings" className="py-16 bg-gradient-to-b from-black via-black to-red-950 text-white relative overflow-hidden">
-      <div className="container mx-auto px-4">
-        <motion.h2
-          className="text-3xl md:text-4xl font-extrabold mb-8 text-center"
-          initial={{ opacity: 0, y: 20 }}
+    <section id="ratings" className="py-24 bg-black text-white relative overflow-hidden">
+      {/* Animated background gradient orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-orange-600/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+
+      <div className="container mx-auto px-4 relative z-10">
+        {/* Header */}
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
         >
-          Customer Reviews
-        </motion.h2>
+          <motion.div
+            className="inline-block mb-4"
+            initial={{ scale: 0.9, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <span className="text-sm font-semibold uppercase tracking-[0.3em] text-red-400 bg-red-600/10 px-4 py-2 rounded-full border border-red-600/20">
+              Testimonials
+            </span>
+          </motion.div>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 bg-gradient-to-r from-white via-red-100 to-red-200 bg-clip-text text-transparent">
+            What Our Customers Say
+          </h2>
+          <div className="w-24 h-1 bg-gradient-to-r from-red-600 to-orange-500 mx-auto mb-6 rounded-full" />
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+            Real experiences from spice lovers who've turned up the heat
+          </p>
+        </motion.div>
 
         {/* Submit Form */}
         <motion.div

@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Truck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const products = [
   {
@@ -61,14 +62,6 @@ const ProductCard = ({ product, index }) => (
             <span className="text-2xl font-bold text-white">Rs. {product.price}</span>
           </div>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-        >
-          <ShoppingCart size={18} />
-          <span>Buy Now</span>
-        </motion.button>
       </div>
     </div>
     <motion.div
@@ -85,7 +78,10 @@ const ProductCard = ({ product, index }) => (
   </motion.div>
 );
 
-const ProductsSection = () => (
+const ProductsSection = () => {
+  const navigate = useNavigate();
+  
+  return (
   <section id="products" className="py-20 bg-gradient-to-b from-black via-black to-red-950 relative">
     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')] opacity-10"></div>
     <div className="container mx-auto px-4 relative z-10">
@@ -110,6 +106,24 @@ const ProductsSection = () => (
           <ProductCard key={product.id} product={product} index={index} />
         ))}
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        viewport={{ once: true }}
+        className="flex justify-center mt-12"
+      >
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/order')}
+          className="bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 text-white px-8 py-4 rounded-xl flex items-center space-x-3 transition shadow-lg shadow-red-900/40 text-lg font-semibold"
+        >
+          <ShoppingCart size={22} />
+          <span>Order Now</span>
+        </motion.button>
+      </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -139,5 +153,6 @@ const ProductsSection = () => (
     </div>
   </section>
 );
+};
 
 export default ProductsSection;

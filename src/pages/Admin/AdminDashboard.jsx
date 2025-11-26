@@ -9,16 +9,19 @@ import {
 	Settings,
 	Package,
 	List,
-	Menu
+	Menu,
+	Star
 } from 'lucide-react';
 
 import ProductDetails from './ProductDetails';
 import Orders from './Orders';
+import Reviews from './Reviews';
 
 const navItems = [
 	{ label: 'Overview', icon: BarChart2 },
 	{ label: 'Products', icon: Box },
 	{ label: 'Orders', icon: Package },
+	{ label: 'Reviews', icon: Star },
 	{ label: 'Settings', icon: Settings },
 ];
 
@@ -42,6 +45,8 @@ const AdminDashboard = () => {
 			? 'Product Manager'
 			: activeNav === 'Orders'
 			? 'Order Management'
+			: activeNav === 'Reviews'
+			? 'Review Moderation'
 			: 'Admin Settings';
 
 	const renderHeaderSubtitle = () => {
@@ -58,6 +63,9 @@ const AdminDashboard = () => {
 		}
 		if (activeNav === 'Orders') {
 			return 'Track fulfilment status and keep customers informed.';
+		}
+		if (activeNav === 'Reviews') {
+			return 'Review feedback before it goes live on the storefront.';
 		}
 		return 'Configure administrator preferences and storefront defaults.';
 	};
@@ -291,6 +299,7 @@ const AdminDashboard = () => {
 				{activeNav === 'Products' && <ProductDetails />}
 				{activeNav === 'Orders' && <Orders />}
 				{activeNav === 'Settings' && renderPlaceholder('Settings')}
+				{activeNav === 'Reviews' && <Reviews />}
 			</main>
 		</div>
 	);

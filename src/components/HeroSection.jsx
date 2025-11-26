@@ -163,20 +163,7 @@ const HeroSection = () => {
               times: [0, 0.25, 0.5, 0.75, 1],
             }}
           >
-            <motion.img
-              src="https://cdn-icons-png.flaticon.com/512/1135/1135434.png"
-              alt=""
-              className="h-6 md:h-10 lg:h-14 select-none pointer-events-none"
-              animate={{
-                opacity: [0.15, 0.25, 0.2, 0.3, 0.15],
-                scale: [1, 0.95, 1.05, 0.98, 1],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: garlic.randomDuration / 2,
-                ease: "easeInOut",
-              }}
-            />
+            
           </motion.div>
         ))}
       </div>

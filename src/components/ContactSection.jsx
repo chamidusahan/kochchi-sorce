@@ -113,13 +113,31 @@ const ContactSection = () => {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Subject</label>
-                <input
-                  type="text"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="Subject"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Your phone number"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Topic</label>
+                  <select
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>
+                      Select an option
+                    </option>
+                    <option>Order Inquiry</option>
+                    <option>General Question</option>
+                    <option>Wholesale Request</option>
+                    <option>Partnership Opportunity</option>
+                    <option>Other</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Message</label>

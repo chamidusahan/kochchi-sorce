@@ -15,6 +15,8 @@ const RatingsSection = () => {
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [ratingValue, setRatingValue] = useState(0);
   const [hoverValue, setHoverValue] = useState(0);
   const [comment, setComment] = useState('');
@@ -93,6 +95,17 @@ const RatingsSection = () => {
     setCycle(0);
   }, [ratings]);
 
+  useEffect(() => {
+    if (!successMessage) return;
+    setShowSuccessPopup(true);
+    const hideTimer = setTimeout(() => setShowSuccessPopup(false), 3000);
+    const clearTimer = setTimeout(() => setSuccessMessage(''), 3400);
+    return () => {
+      clearTimeout(hideTimer);
+      clearTimeout(clearTimer);
+    };
+  }, [successMessage]);
+
   // Helper to refresh ratings from server
   const refreshRatings = async () => {
     try {
@@ -113,8 +126,15 @@ const RatingsSection = () => {
       navigate('/login');
       return;
     }
+    setError(null);
+    setShowSuccessPopup(false);
+    setSuccessMessage('');
     if (ratingValue < 1 || ratingValue > 5) {
       setError('Please select a star rating (1-5).');
+      return;
+    }
+    if (!comment.trim()) {
+      setError('Comment cannot be empty.');
       return;
     }
     if (comment.trim().length < 5) {
@@ -133,9 +153,10 @@ const RatingsSection = () => {
       const data = await res.json();
       if (data.success) {
         // Optimistically prepend new rating
-  setRatings(prev => [data.rating, ...prev]);
+        setRatings(prev => [data.rating, ...prev]);
         setRatingValue(0);
         setComment('');
+        setSuccessMessage('Review submitted successfully!');
         // Then refresh from server to ensure canonical ordering
         refreshRatings();
       } else {
@@ -186,14 +207,28 @@ const RatingsSection = () => {
   };
 
   return (
-    <section id="ratings" className="py-24 bg-black text-white relative overflow-hidden">
-      {/* Animated background gradient orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-orange-600/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-      </div>
+    <>
+      <AnimatePresence>
+        {showSuccessPopup && successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.25 }}
+            className="fixed top-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-green-600/95 px-6 py-3 text-sm font-medium text-white shadow-2xl"
+          >
+            {successMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <section id="ratings" className="py-24 bg-black text-white relative overflow-hidden">
+        {/* Animated background gradient orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/20 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-orange-600/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
 
-      <div className="container mx-auto px-4 relative z-10">
+        <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
         <motion.div
           className="text-center mb-16"
@@ -257,7 +292,10 @@ const RatingsSection = () => {
             </div>
             <textarea
               value={comment}
-              onChange={e => setComment(e.target.value)}
+              onChange={e => {
+                setComment(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="Share your spicy experience..."
               className="w-full h-28 p-3 rounded-md bg-black/60 border border-red-800/40 focus:outline-none focus:ring-2 focus:ring-red-600 text-sm resize-y"
               disabled={!user || submitting}
@@ -382,8 +420,9 @@ const RatingsSection = () => {
             </div>
           </div>
         )}
-      </div>
-    </section>
+        </div>
+      </section>
+    </>
   );
 };
 

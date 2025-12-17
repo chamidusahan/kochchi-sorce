@@ -10,17 +10,20 @@ import {
 	Package,
 	List,
 	Menu,
-	Star
+	Star,
+	MessageSquare
 } from 'lucide-react';
 
 import ProductDetails from './ProductDetails';
 import Orders from './Orders';
 import Reviews from './Reviews';
+import Messages from './Messages';
 
 const navItems = [
 	{ label: 'Overview', icon: BarChart2 },
 	{ label: 'Products', icon: Box },
 	{ label: 'Orders', icon: Package },
+	{ label: 'Messages', icon: MessageSquare },
 	{ label: 'Reviews', icon: Star },
 	{ label: 'Settings', icon: Settings },
 ];
@@ -45,6 +48,8 @@ const AdminDashboard = () => {
 			? 'Product Manager'
 			: activeNav === 'Orders'
 			? 'Order Management'
+			: activeNav === 'Messages'
+			? 'Inbox & Messages'
 			: activeNav === 'Reviews'
 			? 'Review Moderation'
 			: 'Admin Settings';
@@ -66,6 +71,9 @@ const AdminDashboard = () => {
 		}
 		if (activeNav === 'Reviews') {
 			return 'Review feedback before it goes live on the storefront.';
+		}
+		if (activeNav === 'Messages') {
+			return 'Manage customer conversations and follow up quickly.';
 		}
 		return 'Configure administrator preferences and storefront defaults.';
 	};
@@ -298,6 +306,7 @@ const AdminDashboard = () => {
 				{activeNav === 'Overview' && renderOverview()}
 				{activeNav === 'Products' && <ProductDetails />}
 				{activeNav === 'Orders' && <Orders />}
+				{activeNav === 'Messages' && <Messages />}
 				{activeNav === 'Settings' && renderPlaceholder('Settings')}
 				{activeNav === 'Reviews' && <Reviews />}
 			</main>

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,15 +10,15 @@ const products = [
     name: 'Red Chili Sauce',
     size: '250ml',
     price: 1150,
-    image: 'public/images/productinfo.jpg',
+    image: '/images/productinfo.jpg',
     description: 'Our signature hot sauce with the perfect balance of heat and flavor',
   },
   {
     id: 2,
-    name: 'Green Chillie Blast',
+    name: 'Green Chili Sauce',
     size: '250ml',
     price: 1100,
-    image: 'public/images/2.png',
+    image: '/images/2.png',
     description: 'For the brave souls who crave intense heat with every drop',
   },
   {
@@ -31,55 +31,114 @@ const products = [
   },
 ];
 
-const ProductCard = ({ product, index }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 30 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5, delay: index * 0.1 }}
-    viewport={{ once: true, amount: 0.2 }}
-    className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-xl shadow-lg relative overflow-hidden group"
-  >
-    <div className="absolute -right-20 -top-20 w-40 h-40 bg-red-600/10 rounded-full"></div>
-    <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-red-600/5 rounded-full"></div>
-    <div className="relative z-10">
-      <div className="h-56 flex justify-center items-center mb-4">
-        <motion.img
-          src={product.image}
-          alt={product.name}
-          className="h-full object-contain"
-          whileHover={{
-            rotate: [0, -5, 5, -5, 5, 0],
-            transition: { duration: 0.5 },
-          }}
-        />
-      </div>
-      <h3 className="text-xl font-bold text-white mb-2">{product.name}</h3>
-      <p className="text-gray-400 mb-4">{product.description}</p>
-      <div className="flex justify-between items-end">
-        <div>
-          <span className="text-sm text-gray-400">{product.size}</span>
-          <div className="flex items-center mt-1">
-            <span className="text-2xl font-bold text-white">Rs. {product.price}</span>
+const ProductCard = ({ product, index, quantity, onIncrement, onDecrement }) => {
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      viewport={{ once: true, amount: 0.2 }}
+      className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-xl shadow-lg relative overflow-hidden group"
+    >
+      <div className="absolute -right-20 -top-20 w-40 h-40 bg-red-600/10 rounded-full"></div>
+      <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-red-600/5 rounded-full"></div>
+      <div className="relative z-10">
+        <div className="h-56 flex justify-center items-center mb-4">
+          <motion.img
+            src={product.image}
+            alt={product.name}
+            className="h-full object-contain"
+            whileHover={{
+              rotate: [0, -5, 5, -5, 5, 0],
+              transition: { duration: 0.5 },
+            }}
+          />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">{product.name}</h3>
+        <p className="text-gray-400 mb-4">{product.description}</p>
+        <div className="flex justify-between items-end">
+          <div>
+            <span className="text-sm text-gray-400">{product.size}</span>
+            <div className="flex items-center mt-1">
+              <span className="text-2xl font-bold text-white">LKR. {product.price}</span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={onDecrement}
+              className="w-9 h-9 rounded-full border border-red-500 text-red-400 hover:text-white hover:bg-red-600 transition"
+            >
+              -
+            </motion.button>
+            <span className="w-8 text-center text-lg font-semibold text-white">
+              {quantity}
+            </span>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={onIncrement}
+              className="w-9 h-9 rounded-full bg-red-600 text-white hover:bg-red-500 transition"
+            >
+              +
+            </motion.button>
           </div>
         </div>
       </div>
-    </div>
-    <motion.div
-      className="absolute -top-2 -right-2 bg-yellow-500 w-16 h-16 rounded-full flex items-center justify-center rotate-12 z-20 shadow-lg"
-      initial={{ rotate: 12 }}
-      whileHover={{ rotate: -12, scale: 1.1 }}
-      transition={{ type: 'spring', stiffness: 300 }}
-    >
-      <div className="text-center text-black font-bold">
-        <div className="text-xs">BEST</div>
-        <div className="text-sm">SELLER</div>
-      </div>
+      <motion.div
+        className="absolute -top-2 -right-2 bg-yellow-500 w-16 h-16 rounded-full flex items-center justify-center rotate-12 z-20 shadow-lg"
+        initial={{ rotate: 12 }}
+        whileHover={{ rotate: -12, scale: 1.1 }}
+        transition={{ type: 'spring', stiffness: 300 }}
+      >
+        <div className="text-center text-black font-bold">
+          <div className="text-xs">BEST</div>
+          <div className="text-sm">SELLER</div>
+        </div>
+      </motion.div>
     </motion.div>
-  </motion.div>
-);
+  );
+};
 
 const ProductsSection = () => {
   const navigate = useNavigate();
+  const [cartQuantities, setCartQuantities] = useState(() => {
+    const initial = {};
+    products.forEach((product) => {
+      initial[product.id] = 0;
+    });
+    return initial;
+  });
+
+  const handleIncrement = (id) => {
+    setCartQuantities((prev) => ({
+      ...prev,
+      [id]: (prev[id] || 0) + 1,
+    }));
+  };
+
+  const handleDecrement = (id) => {
+    setCartQuantities((prev) => ({
+      ...prev,
+      [id]: Math.max((prev[id] || 0) - 1, 0),
+    }));
+  };
+
+  const selectedItems = useMemo(() => (
+    products
+      .filter((product) => (cartQuantities[product.id] || 0) > 0)
+      .map((product) => ({
+        ...product,
+        quantity: cartQuantities[product.id],
+      }))
+  ), [cartQuantities]);
+
+  const hasItems = selectedItems.length > 0;
+
+  const handleAddToCart = () => {
+    if (!hasItems) return;
+    navigate('/order', { state: { cartItems: selectedItems } });
+  };
   
   return (
   <section id="products" className="py-20 bg-gradient-to-b from-black via-black to-red-950 relative">
@@ -103,7 +162,14 @@ const ProductsSection = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {products.map((product, index) => (
-          <ProductCard key={product.id} product={product} index={index} />
+          <ProductCard
+            key={product.id}
+            product={product}
+            index={index}
+            quantity={cartQuantities[product.id] || 0}
+            onIncrement={() => handleIncrement(product.id)}
+            onDecrement={() => handleDecrement(product.id)}
+          />
         ))}
       </div>
 
@@ -117,11 +183,12 @@ const ProductsSection = () => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/order')}
-          className="bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 text-white px-8 py-4 rounded-xl flex items-center space-x-3 transition shadow-lg shadow-red-900/40 text-lg font-semibold"
+          onClick={handleAddToCart}
+          disabled={!hasItems}
+          className={`bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 text-white px-8 py-4 rounded-xl flex items-center space-x-3 transition shadow-lg shadow-red-900/40 text-lg font-semibold ${hasItems ? '' : 'opacity-40 cursor-not-allowed hover:brightness-100'}`}
         >
           <ShoppingCart size={22} />
-          <span>Order Now</span>
+          <span>Add to Cart</span>
         </motion.button>
       </motion.div>
 

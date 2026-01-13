@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
 	ShoppingCart,
-	DollarSign,
+	Banknote,
 	Box,
 	Users,
 	BarChart2,
@@ -28,16 +28,44 @@ const navItems = [
 	{ label: 'Settings', icon: Settings },
 ];
 
-const statCards = [
-	{ label: 'Total Orders', value: '1,248', icon: ShoppingCart, growth: '+12%', color: 'text-red-500', border: 'border-red-800' },
-	{ label: 'Revenue', value: '$12,540', icon: DollarSign, growth: '+8%', color: 'text-green-400', border: 'border-green-800' },
-	{ label: 'Products', value: '86', icon: Box, growth: '+3', color: 'text-orange-400', border: 'border-orange-800' },
-	{ label: 'Visitors', value: '4,321', icon: Users, growth: '+23%', color: 'text-blue-400', border: 'border-blue-800' },
-];
-
 const AdminDashboard = () => {
-	const [sidebarOpen, setSidebarOpen] = React.useState(false);
-	const [activeNav, setActiveNav] = React.useState(navItems[0].label);
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [activeNav, setActiveNav] = useState(navItems[0].label);
+	const [dashboardData, setDashboardData] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+
+	useEffect(() => {
+		const fetchDashboardData = async () => {
+			try {
+				setLoading(true);
+				const response = await fetch('http://localhost/backend/admin/api/get-dashboard-stats.php', {
+					method: 'GET',
+					credentials: 'include'
+				});
+
+				if (!response.ok) {
+					throw new Error('Failed to fetch dashboard data');
+				}
+
+				const result = await response.json();
+				if (result.success) {
+					setDashboardData(result.data);
+				} else {
+					throw new Error(result.message || 'Failed to load data');
+				}
+			} catch (err) {
+				console.error('Error fetching dashboard data:', err);
+				setError(err.message);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		if (activeNav === 'Overview') {
+			fetchDashboardData();
+		}
+	}, [activeNav]);
 
 	const toggleSidebar = () => setSidebarOpen((prev) => !prev);
 
@@ -78,7 +106,87 @@ const AdminDashboard = () => {
 		return 'Configure administrator preferences and storefront defaults.';
 	};
 
-	const renderOverview = () => (
+	const renderOverview = () => {
+		if (loading) {
+			return (
+				<div className="flex items-center justify-center h-96">
+					<div className="text-white text-lg">Loading dashboard data...</div>
+				</div>
+			);
+		}
+
+		if (error) {
+			return (
+				<div className="bg-red-900/20 border border-red-500 rounded-2xl p-6 text-center">
+					<p className="text-red-400 text-lg">Error loading dashboard: {error}</p>
+					<button 
+						onClick={() => window.location.reload()}
+						className="mt-4 px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold transition"
+					>
+						Retry
+					</button>
+				</div>
+			);
+		}
+
+		if (!dashboardData) {
+			return null;
+		}
+
+		const { stats, weeklySales, recentOrders } = dashboardData;
+
+		const formatCurrency = (amount) =>
+			`LKR ${Number(amount || 0).toLocaleString('en-LK', {
+				minimumFractionDigits: 2,
+				maximumFractionDigits: 2
+			})}`;
+
+		const statCards = [
+			{ 
+				label: 'Total Orders', 
+				value: stats.totalOrders.toLocaleString(), 
+				icon: ShoppingCart, 
+				growth: `${stats.ordersGrowth >= 0 ? '+' : ''}${stats.ordersGrowth}%`, 
+				color: stats.ordersGrowth >= 0 ? 'text-green-400' : 'text-red-400', 
+				border: 'border-red-800' 
+			},
+			{ 
+				label: 'Revenue', 
+				value: formatCurrency(stats.totalRevenue), 
+				icon: Banknote, 
+				growth: `${stats.revenueGrowth >= 0 ? '+' : ''}${stats.revenueGrowth}%`, 
+				color: stats.revenueGrowth >= 0 ? 'text-green-400' : 'text-red-400', 
+				border: 'border-green-800' 
+			},
+			{ 
+				label: 'Products', 
+				value: stats.totalProducts.toString(), 
+				icon: Box, 
+				growth: `${stats.productsGrowth >= 0 ? '+' : ''}${stats.productsGrowth}`, 
+				color: stats.productsGrowth >= 0 ? 'text-green-400' : 'text-red-400', 
+				border: 'border-orange-800' 
+			},
+			{ 
+				label: 'Visitors', 
+				value: stats.totalUsers.toLocaleString(), 
+				icon: Users, 
+				growth: `${stats.usersGrowth >= 0 ? '+' : ''}${stats.usersGrowth}%`, 
+				color: stats.usersGrowth >= 0 ? 'text-green-400' : 'text-red-400', 
+				border: 'border-blue-800' 
+			},
+		];
+
+		// Calculate bar heights for weekly sales chart
+		const maxAmount = Math.max(...weeklySales.data.map(d => d.amount), 1);
+		const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+		
+		// Create complete week data with 0 for missing days
+		const completeWeekData = daysOfWeek.map(day => {
+			const found = weeklySales.data.find(d => d.day === day);
+			return { day: day.substring(0, 3), amount: found ? found.amount : 0 };
+		});
+
+		return (
 		<>
 			<div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
 				{statCards.map(({ label, value, icon: Icon, growth, color, border }) => (
@@ -109,26 +217,35 @@ const AdminDashboard = () => {
 						<span className="text-white/60 text-xs md:text-sm">Last 7 days performance</span>
 					</div>
 					<div className="text-xl md:text-2xl font-bold text-white">
-						$4,890 <span className="text-green-400 text-sm md:text-base font-semibold ml-2">+15.3%</span>
+						{formatCurrency(weeklySales.total)} 
+						<span className={`${weeklySales.growth >= 0 ? 'text-green-400' : 'text-red-400'} text-sm md:text-base font-semibold ml-2`}>
+							{weeklySales.growth >= 0 ? '+' : ''}{weeklySales.growth}%
+						</span>
 					</div>
 				</div>
 				<div className="w-full h-40 md:h-56 flex items-end justify-center overflow-x-auto">
 					<svg width="640" height="160" viewBox="0 0 420 160" preserveAspectRatio="xMidYMid meet">
 						<rect x="0" y="0" width="420" height="160" rx="16" fill="#18181b" />
-						<rect x="30" y="90" width="32" height="50" rx="6" fill="#c10c0cff" />
-						<rect x="80" y="110" width="32" height="30" rx="6" fill="#c10c0cff" />
-						<rect x="130" y="60" width="32" height="80" rx="6" fill="#c10c0cff" />
-						<rect x="180" y="120" width="32" height="20" rx="6" fill="#c10c0cff" />
-						<rect x="230" y="40" width="32" height="100" rx="6" fill="#c10c0cff" />
-						<rect x="280" y="80" width="32" height="60" rx="6" fill="#c10c0cff" />
-						<rect x="330" y="100" width="32" height="40" rx="6" fill="#c10c0cff" />
-						<text x="46" y="155" textAnchor="middle" fontSize="13" fill="#fff">Mon</text>
-						<text x="96" y="155" textAnchor="middle" fontSize="13" fill="#fff">Tue</text>
-						<text x="146" y="155" textAnchor="middle" fontSize="13" fill="#fff">Wed</text>
-						<text x="196" y="155" textAnchor="middle" fontSize="13" fill="#fff">Thu</text>
-						<text x="246" y="155" textAnchor="middle" fontSize="13" fill="#fff">Fri</text>
-						<text x="296" y="155" textAnchor="middle" fontSize="13" fill="#fff">Sat</text>
-						<text x="346" y="155" textAnchor="middle" fontSize="13" fill="#fff">Sun</text>
+						{completeWeekData.map((day, index) => {
+							const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 10;
+							const x = 30 + (index * 50);
+							const y = 140 - height;
+							return (
+								<g key={index}>
+									<rect 
+										x={x} 
+										y={y} 
+										width="32" 
+										height={height} 
+										rx="6" 
+										fill="#c10c0cff" 
+									/>
+									<text x={x + 16} y="155" textAnchor="middle" fontSize="13" fill="#fff">
+										{day.day}
+									</text>
+								</g>
+							);
+						})}
 					</svg>
 				</div>
 			</section>
@@ -138,7 +255,10 @@ const AdminDashboard = () => {
 					<h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
 						<ShoppingCart size={18} className="text-red-500" /> Recent Orders
 					</h2>
-					<button className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs md:text-sm transition w-full sm:w-auto">
+					<button 
+						onClick={() => setActiveNav('Orders')}
+						className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs md:text-sm transition w-full sm:w-auto"
+					>
 						View All
 					</button>
 				</div>
@@ -153,36 +273,39 @@ const AdminDashboard = () => {
 							</tr>
 						</thead>
 						<tbody>
-							<tr className="border-b border-gray-800/40">
-								<td className="py-2 px-4">#1001</td>
-								<td className="py-2 px-4">Chamidu S.</td>
-								<td className="py-2 px-4">$120.00</td>
-								<td className="py-2 px-4">
-									<span className="px-3 py-1 rounded-full bg-green-700/30 text-green-400 text-xs font-semibold">Completed</span>
-								</td>
-							</tr>
-							<tr className="border-b border-gray-800/40">
-								<td className="py-2 px-4">#1002</td>
-								<td className="py-2 px-4">Nova Sync</td>
-								<td className="py-2 px-4">$75.50</td>
-								<td className="py-2 px-4">
-									<span className="px-3 py-1 rounded-full bg-yellow-700/30 text-yellow-400 text-xs font-semibold">Pending</span>
-								</td>
-							</tr>
-							<tr>
-								<td className="py-2 px-4">#1003</td>
-								<td className="py-2 px-4">Test User</td>
-								<td className="py-2 px-4">$49.99</td>
-								<td className="py-2 px-4">
-									<span className="px-3 py-1 rounded-full bg-red-700/30 text-red-400 text-xs font-semibold">Cancelled</span>
-								</td>
-							</tr>
+							{recentOrders.length === 0 ? (
+								<tr>
+									<td colSpan="4" className="py-4 px-4 text-center text-white/60">
+										No orders yet
+									</td>
+								</tr>
+							) : (
+								recentOrders.map((order) => (
+									<tr key={order.orderId} className="border-b border-gray-800/40">
+										<td className="py-2 px-4">#{order.orderId}</td>
+										<td className="py-2 px-4">{order.customer}</td>
+										<td className="py-2 px-4">{formatCurrency(order.total)}</td>
+										<td className="py-2 px-4">
+											<span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+												order.status === 'paid' 
+													? 'bg-green-700/30 text-green-400' 
+													: order.status === 'pending'
+													? 'bg-yellow-700/30 text-yellow-400'
+													: 'bg-red-700/30 text-red-400'
+											}`}>
+												{order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+											</span>
+										</td>
+									</tr>
+								))
+							)}
 						</tbody>
 					</table>
 				</div>
 			</section>
 		</>
 	);
+	};
 
 	const renderPlaceholder = (label) => (
 		<section className="bg-black/70 border border-gray-800/40 rounded-2xl p-8 text-center text-white/70 shadow-lg">

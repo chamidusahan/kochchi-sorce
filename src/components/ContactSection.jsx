@@ -41,7 +41,7 @@ const ContactSection = () => {
         throw new Error(data.message || 'Failed to send message')
       }
 
-      setFeedback({ type: 'success', message: 'Thanks! Your message has been received.' })
+      setFeedback({ type: 'success', message: 'Thanks! we will get back to you shortly.' })
       setFormValues({ name: '', email: '', phone: '', topic: '', message: '' })
     } catch (error) {
       setFeedback({ type: 'error', message: error.message || 'Something went wrong. Please try again.' })

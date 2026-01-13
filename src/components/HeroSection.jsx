@@ -178,7 +178,10 @@ const HeroSection = () => {
             transition={{ duration: 0.8 }}
           >
             Turn up the Heat with <br />
-            <span className="text-red-500 inline-block">SPICE UP</span>
+            <span className="inline-block">
+              <span className="text-green-400">SPICE</span>{" "}
+              <span className="text-red-500">UP</span>
+            </span>
           </motion.h1>
 
           <motion.p
@@ -198,7 +201,7 @@ const HeroSection = () => {
             transition={{ duration: 0.8, delay: 0.4 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/order')}
+            onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}
           >
             <span>ORDER NOW</span>
             <ArrowRight
@@ -216,7 +219,7 @@ const HeroSection = () => {
             transition={{ duration: 1.5, ease: "easeInOut" }}
           >
             <img
-              src="public\images\product1.png"
+              src="/images/product1.png"
               alt="Spice Up Hot Sauce Bottle"
               className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,0,0,0.5)]"
             />

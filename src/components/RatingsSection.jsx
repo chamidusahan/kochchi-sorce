@@ -221,7 +221,7 @@ const RatingsSection = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      <section id="ratings" className="py-24 bg-black text-white relative overflow-hidden">
+      <section id="ratings" className="py-16 bg-black text-white relative overflow-hidden">
         {/* Animated background gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/20 rounded-full blur-[120px] animate-pulse" />
@@ -231,14 +231,14 @@ const RatingsSection = () => {
         <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
         <motion.div
-          className="text-center mb-16"
+          className="text-center mb-12"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
           <motion.div
-            className="inline-block mb-4"
+            className="inline-block mb-3"
             initial={{ scale: 0.9, opacity: 0 }}
             whileInView={{ scale: 1, opacity: 1 }}
             viewport={{ once: true }}
@@ -248,18 +248,18 @@ const RatingsSection = () => {
               Testimonials
             </span>
           </motion.div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 bg-gradient-to-r from-white via-red-100 to-red-200 bg-clip-text text-transparent">
-            What Our Customers Say
+          <h2 className="text-3xl md:text-4xl font-bold mb-3">
+            <span className="text-red-500">Hot</span> Customer Reviews
           </h2>
-          <div className="w-24 h-1 bg-gradient-to-r from-red-600 to-orange-500 mx-auto mb-6 rounded-full" />
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <div className="w-24 h-1 bg-red-600 mx-auto mb-5 rounded-full" />
+          <p className="text-gray-400 text-base max-w-2xl mx-auto">
             Real experiences from spice lovers who've turned up the heat
           </p>
         </motion.div>
 
         {/* Submit Form */}
         <motion.div
-          className="max-w-2xl mx-auto mb-12 bg-gradient-to-br from-red-950 to-black p-6 rounded-xl border border-red-800/40 shadow-lg"
+          className="max-w-2xl mx-auto mb-10 bg-gradient-to-br from-red-950 to-black p-5 rounded-xl border border-red-800/40 shadow-lg"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -281,7 +281,7 @@ const RatingsSection = () => {
                   className="group"
                 >
                   <Star
-                    size={30}
+                    size={26}
                     className={
                       'transition-colors ' +
                       ((hoverValue || ratingValue) >= s ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600')
@@ -297,7 +297,7 @@ const RatingsSection = () => {
                 if (error) setError(null);
               }}
               placeholder="Share your spicy experience..."
-              className="w-full h-28 p-3 rounded-md bg-black/60 border border-red-800/40 focus:outline-none focus:ring-2 focus:ring-red-600 text-sm resize-y"
+              className="w-full h-24 p-3 rounded-md bg-black/60 border border-red-800/40 focus:outline-none focus:ring-2 focus:ring-red-600 text-sm resize-y"
               disabled={!user || submitting}
             />
             {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
@@ -318,7 +318,7 @@ const RatingsSection = () => {
           <p className="text-center text-gray-400">No reviews yet. Be the first!</p>
         ) : (
           <div
-            className="relative flex flex-col items-center gap-6"
+            className="relative flex flex-col items-center gap-5"
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
             ref={carouselRef}
@@ -342,47 +342,56 @@ const RatingsSection = () => {
                     transition={{ duration: 0.6, ease: 'easeOut' }}
                     className="relative w-full max-w-3xl"
                   >
-                    <div className="relative z-10 p-10 rounded-3xl border border-red-700/40 bg-gradient-to-br from-red-950/70 via-black/90 to-black/80 shadow-[0_40px_120px_-60px_rgba(255,64,64,0.6)]">
-                      <div className="absolute -top-12 left-10 hidden md:block">
+                    <div className="relative z-10 p-8 rounded-3xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/50 via-black/90 to-black/80 shadow-[0_40px_120px_-60px_rgba(120,255,190,0.5)]">
+                      <div className="absolute -top-10 left-8 hidden md:block">
                         <motion.span
                           animate={{ scale: [1, 1.1, 1] }}
                           transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-                          className="text-6xl text-red-700/70"
+                          className="text-5xl text-red-700/70"
                         >
                           “
                         </motion.span>
                       </div>
 
                       <div className="flex flex-col md:flex-row md:items-start md:gap-6">
-                        {profilePic ? (
-                          <img
-                            src={profilePic}
-                            alt={displayName}
-                            className="w-20 h-20 rounded-full object-cover border-2 border-red-500/60 shadow-lg"
-                          />
-                        ) : (
-                          <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg ${getAvatarColor(initial)}`}>
-                            {initial}
-                          </div>
-                        )}
-                        <div className="mt-6 md:mt-0 space-y-4">
-                          <div>
-                            <p className="font-semibold text-lg text-white">{displayName}</p>
+                        <div className="flex items-center gap-4 md:flex-col md:items-start">
+                          {profilePic ? (
+                            <img
+                              src={profilePic}
+                              alt={displayName}
+                              className="w-14 h-14 md:w-16 md:h-16 rounded-full object-cover border-2 border-red-500/60 shadow-lg"
+                            />
+                          ) : (
+                            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-white font-bold text-xl md:text-2xl shadow-lg ${getAvatarColor(initial)}`}>
+                              {initial}
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-1 md:mt-4">
+                            <p className="font-semibold text-sm md:text-base text-white">{displayName}</p>
                             {review.created_at && (
-                              <p className="text-sm text-red-200/70">{new Date(review.created_at).toLocaleDateString()}</p>
+                              <p className="text-xs md:text-sm text-red-200/70">{new Date(review.created_at).toLocaleDateString()}</p>
                             )}
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: review.rating }).map((_, i) => (
+                                <Star
+                                  key={i}
+                                  size={22}
+                                  className="w-4 h-4 md:w-[22px] md:h-[22px] text-yellow-400 fill-yellow-400"
+                                />
+                              ))}
+                              {Array.from({ length: 5 - review.rating }).map((_, i) => (
+                                <Star
+                                  key={`empty-${i}`}
+                                  size={22}
+                                  className="w-4 h-4 md:w-[22px] md:h-[22px] text-gray-700"
+                                />
+                              ))}
+                            </div>
                           </div>
+                        </div>
 
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: review.rating }).map((_, i) => (
-                              <Star key={i} size={22} className="text-yellow-400 fill-yellow-400" />
-                            ))}
-                            {Array.from({ length: 5 - review.rating }).map((_, i) => (
-                              <Star key={`empty-${i}`} size={22} className="text-gray-700" />
-                            ))}
-                          </div>
-
-                          <p className="text-base md:text-lg text-gray-200 leading-relaxed">
+                        <div className="mt-4 md:mt-0 space-y-3 md:flex-1">
+                          <p className="text-sm md:text-base text-gray-200 leading-relaxed">
                             {review.comment}
                           </p>
 
@@ -399,7 +408,7 @@ const RatingsSection = () => {
                     </div>
 
                     {/* Floating glow accent */}
-                    <div className="absolute inset-0 blur-3xl bg-red-600/20 -z-10 translate-y-6" />
+                    <div className="absolute inset-0 blur-3xl bg-emerald-400/20 -z-10 translate-y-6" />
                   </motion.div>
                 );
               })()}

@@ -4,15 +4,37 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 const DELIVERY_FEE = 350;
 
-// Options will be built from DB; we always append a custom option
-const CUSTOM_OPTION = { value: "Other", label: "Custom blend", description: "Request a special batch", heat: "✨ Tell us what you need", price: 0 };
-
 const paymentOptions = [
   { value: "COD", label: "Cash on Delivery", description: "Pay when the order arrives", accent: "border-green-500/60 bg-green-500/10" },
   { value: "VISA", label: "Visa / MasterCard", description: "Secure online payment", accent: "border-blue-500/60 bg-blue-500/10" }
 ];
 
 const formatCurrency = (amount) => `Rs. ${amount.toLocaleString()}`;
+
+const normalizeCartItems = (items) => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter((item) => item && Number(item.quantity) > 0)
+    .map((item) => ({
+      id: item.id ?? item.value ?? item.productId ?? `custom-${item.name}`,
+      name: item.name ?? item.label ?? "Selected blend",
+      price: Number(item.price) || 0,
+      quantity: Number(item.quantity) || 0,
+      size: item.size ?? item.volume ?? "",
+      description: item.description ?? "",
+      sku: item.sku ?? "",
+    }));
+};
+
+const extractCartItems = (state) => {
+  if (!state) return [];
+  if (Array.isArray(state.cartItems)) return state.cartItems;
+  if (state.cartItems) return state.cartItems;
+  if (state.from && typeof state.from === 'object' && state.from.state) {
+    return extractCartItems(state.from.state);
+  }
+  return [];
+};
 
 const createInitialForm = () => ({
   name: "",
@@ -21,9 +43,6 @@ const createInitialForm = () => ({
   district: "",
   postalCode: "",
   phone: "",
-  product: "", // set after products load
-  otherProduct: "",
-  quantity: 1,
   paymentMethod: paymentOptions[0].value,
   notes: ""
 });
@@ -34,17 +53,16 @@ const OrderNow = () => {
   const [submitted, setSubmitted] = useState(false);
   const [orderSummary, setOrderSummary] = useState(null);
   const [dbProducts, setDbProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(true);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [cartItems, setCartItems] = useState(() => normalizeCartItems(extractCartItems(location.state)));
 
   // Fetch products from existing backend endpoint
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
       try {
-        setProductsLoading(true);
         const res = await fetch('http://localhost/backend/admin/api/get-products.php');
         const data = await res.json();
         if (data?.success && Array.isArray(data.data)) {
@@ -61,20 +79,19 @@ const OrderNow = () => {
             }));
           if (isMounted) {
             setDbProducts(mapped);
-            // set default product if empty
-            const firstInStock = mapped.find(m => (m.stock ?? 0) > 0)?.value;
-            setForm(prev => ({ ...prev, product: prev.product || firstInStock || CUSTOM_OPTION.value }));
           }
         }
       } catch (e) {
         console.error('Failed to load products', e);
-      } finally {
-        if (isMounted) setProductsLoading(false);
       }
     };
     load();
     return () => { isMounted = false; };
   }, []);
+
+  useEffect(() => {
+    setCartItems(normalizeCartItems(extractCartItems(location.state)));
+  }, [location.state]);
 
   // Auto-fill address for returning users
   useEffect(() => {
@@ -104,17 +121,24 @@ const OrderNow = () => {
     return () => { isMounted = false; };
   }, [user]);
 
-  const productOptions = useMemo(() => {
-    return [...dbProducts, CUSTOM_OPTION];
-  }, [dbProducts]);
+  const resolvedCartItems = useMemo(() => {
+    if (!cartItems.length) return [];
+    return cartItems.map((item) => {
+      const match = dbProducts.find((p) => p.value === String(item.id) || p.label === item.name);
+      return {
+        ...item,
+        id: match?.value ?? item.id,
+        price: typeof match?.price === 'number' && !Number.isNaN(match.price) ? match.price : item.price,
+        sku: match?.sku ?? item.sku ?? "",
+        stock: match?.stock,
+      };
+    });
+  }, [cartItems, dbProducts]);
 
-  const selectedProduct = productOptions.find((item) => item.value === form.product);
-  const quantity = Number(form.quantity) || 0;
-  const unitPrice = selectedProduct?.price ?? 0;
-  const isCustomProduct = form.product === "Other";
-  const subTotal = unitPrice * quantity;
-  const deliveryFee = subTotal > 0 ? DELIVERY_FEE : 0;
-  const total = subTotal + deliveryFee;
+  const cartSubTotal = resolvedCartItems.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
+  const deliveryFee = cartSubTotal > 0 ? DELIVERY_FEE : 0;
+  const total = cartSubTotal + deliveryFee;
+  const canSubmit = resolvedCartItems.length > 0;
 
   const validate = () => {
     const e = {};
@@ -124,26 +148,15 @@ const OrderNow = () => {
     if (!form.district.trim()) e.district = "District is required";
     if (!/^[0-9]{5}$/.test(form.postalCode.trim())) e.postalCode = "Please enter a valid 5-digit postal code";
     if (!/^\+?[0-9\s-]{7,15}$/.test(form.phone.trim())) e.phone = "Please enter a valid phone number";
-    if (!form.product) e.product = "Please choose a product";
-    if (isCustomProduct && !form.otherProduct.trim()) e.otherProduct = "Let us know which blend you need";
-    if (!Number.isInteger(Number(form.quantity)) || Number(form.quantity) < 1) e.quantity = "Quantity must be at least 1";
+    if (!resolvedCartItems.length) e.cart = "Please add at least one product before confirming your order.";
     if (!form.paymentMethod) e.paymentMethod = "Select a payment method";
-    // Stock validations
-    if (!isCustomProduct) {
-      const sp = selectedProduct;
-      if (sp && (sp.stock ?? 0) <= 0) {
-        e.product = "Selected product is out of stock";
-      } else if (sp && Number(form.quantity) > (sp.stock ?? Number.MAX_SAFE_INTEGER)) {
-        e.quantity = `Only ${sp.stock} in stock`;
-      }
-    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: name === "quantity" ? value.replace(/[^0-9]/g, "") : value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleRadioChange = (field, value) => {
@@ -153,21 +166,40 @@ const OrderNow = () => {
   const resetForm = () => {
     setForm(createInitialForm());
     setErrors({});
+    setCartItems([]);
+  };
+
+  const handleReturnToProducts = () => {
+    navigate('/', { state: { from: 'order', focus: 'products' } });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
-      navigate("/login", { state: { from: location } });
+      navigate("/login", { state: { from: location, cartItems: resolvedCartItems } });
       return;
     }
     if (!validate()) return;
 
-    const productName = isCustomProduct ? form.otherProduct : selectedProduct?.label ?? form.product;
     const paymentLabel = paymentOptions.find((option) => option.value === form.paymentMethod)?.label ?? form.paymentMethod;
 
     // Persist to backend (customer_orders)
     try {
+      const itemsPayload = resolvedCartItems.map((item) => {
+        const productId = Number.parseInt(item.id, 10);
+        const safePrice = Number(item.price) || 0;
+        return {
+          productId: Number.isNaN(productId) ? 0 : productId,
+          sku: item.sku || '',
+          quantity: item.quantity,
+          price: safePrice,
+          subtotal: safePrice * item.quantity,
+        };
+      });
+      if (!itemsPayload.length) {
+        throw new Error('No products selected for this order');
+      }
+
       const payload = {
         totalAmount: total,
         paymentMethod: form.paymentMethod, // 'COD' | 'VISA' -> server maps to DB enum
@@ -177,13 +209,7 @@ const OrderNow = () => {
         city: form.city,
         district: form.district,
         postalCode: form.postalCode,
-        items: [{
-          productId: isCustomProduct ? 0 : parseInt(form.product),
-          sku: isCustomProduct ? 'CUSTOM' : (selectedProduct?.sku || ''),
-          quantity: quantity,
-          price: unitPrice,
-          subtotal: subTotal
-        }]
+        items: itemsPayload
       };
 
       const res = await fetch('http://localhost/backend/user/api/create-order.php', {
@@ -202,14 +228,17 @@ const OrderNow = () => {
         name: form.name,
         address: form.address,
         phone: form.phone,
-        product: productName,
-        quantity,
         paymentMethod: paymentLabel,
         notes: form.notes,
-        unitPrice,
-        subTotal,
+        subTotal: cartSubTotal,
         deliveryFee,
         total,
+        items: resolvedCartItems.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: Number(item.price) || 0,
+          subtotal: (Number(item.price) || 0) * item.quantity,
+        })),
         orderId: data.orderId
       });
       setSubmitted(true);
@@ -243,13 +272,13 @@ const OrderNow = () => {
             </p>
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <button
-                onClick={() => navigate("/login", { state: { from: location } })}
+                onClick={() => navigate("/login", { state: { from: location, cartItems: resolvedCartItems } })}
                 className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-red-900/40 transition hover:brightness-110"
               >
                 Go to login
               </button>
               <button
-                onClick={() => navigate("/login", { state: { from: location, mode: "signup" } })}
+                onClick={() => navigate("/login", { state: { from: location, mode: "signup", cartItems: resolvedCartItems } })}
                 className="w-full sm:w-auto rounded-2xl border border-white/20 bg-white/5 px-6 py-3 text-base font-semibold text-white/80 backdrop-blur transition hover:text-white"
               >
                 Create account
@@ -280,10 +309,24 @@ const OrderNow = () => {
                   <h3 className="text-2xl font-semibold text-white">Order confirmed!</h3>
                   <p className="text-white/70">Thanks {orderSummary.name.split(" ")[0]}, we will call you within 10 minutes to finalise delivery.</p>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-left text-sm text-white/80">
-                    <p className="flex justify-between"><span className="text-white/60">Product</span><span className="font-semibold text-white">{orderSummary.product}</span></p>
-                    <p className="flex justify-between"><span className="text-white/60">Quantity</span><span className="font-semibold text-white">{orderSummary.quantity}</span></p>
+                    <div className="space-y-3">
+                      {orderSummary.items && orderSummary.items.length ? (
+                        orderSummary.items.map((item, idx) => (
+                          <div key={`${item.name}-${idx}`} className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="font-semibold text-white">{item.name}</p>
+                              <p className="text-xs text-white/60">{item.quantity} × {item.price ? formatCurrency(item.price) : "To be confirmed"}</p>
+                            </div>
+                            <span className="text-sm font-semibold text-white">{item.subtotal ? formatCurrency(item.subtotal) : "TBC"}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No products were recorded for this order.</p>
+                      )}
+                    </div>
+                    <div className="my-4 h-px bg-white/10" />
                     <p className="flex justify-between"><span className="text-white/60">Payment</span><span className="font-semibold text-white">{orderSummary.paymentMethod}</span></p>
-                    <p className="mt-4 flex justify-between text-sm text-white/60">Subtotal<span className="text-white/80">{orderSummary.subTotal ? formatCurrency(orderSummary.subTotal) : "To be confirmed"}</span></p>
+                    <p className="mt-3 flex justify-between text-sm text-white/60">Subtotal<span className="text-white/80">{orderSummary.subTotal ? formatCurrency(orderSummary.subTotal) : "To be confirmed"}</span></p>
                     <p className="flex justify-between text-sm text-white/60">Delivery fee<span className="text-white/80">{orderSummary.deliveryFee ? formatCurrency(orderSummary.deliveryFee) : "Included"}</span></p>
                     <p className="mt-2 flex justify-between text-base font-semibold text-white">Total<span>{orderSummary.total ? formatCurrency(orderSummary.total) : "We will confirm"}</span></p>
                   </div>
@@ -376,78 +419,75 @@ const OrderNow = () => {
                       {errors.phone && <p className="mt-1 text-sm text-red-300">{errors.phone}</p>}
                     </div>
 
-                    <div>
-                      <label className="text-sm font-semibold text-white/80">Quantity</label>
-                      <input
-                        type="number"
-                        name="quantity"
-                        min={1}
-                        value={form.quantity}
-                        onChange={handleChange}
-                        className="mt-2 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-400 focus:outline-none"
-                      />
-                      {errors.quantity && <p className="mt-1 text-sm text-red-300">{errors.quantity}</p>}
-                    </div>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-semibold text-white/80">Select your blend</label>
-                      <span className="text-xs font-medium uppercase tracking-wide text-white/50">Step 1</span>
+                      <label className="text-sm font-semibold text-white/80">Selected blends</label>
+                      <span className="text-xs font-medium uppercase tracking-wide text-white/50">From cart</span>
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {productOptions.map((option) => {
-                        const active = form.product === option.value;
-                        const out = option.value !== 'Other' && (option.stock ?? 0) <= 0;
-                        return (
-                          <label
-                            key={option.value}
-                            className={`relative flex ${out ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} flex-col rounded-2xl border ${active ? "border-red-500 bg-red-600/15" : "border-white/10 bg-white/5 hover:border-red-400/60"} p-4 transition`}
+                    <div className="mt-4 space-y-3">
+                      {resolvedCartItems.length ? (
+                        resolvedCartItems.map((item) => {
+                          const itemTotal = (Number(item.price) || 0) * item.quantity;
+                          return (
+                            <div
+                              key={item.id || item.name}
+                              className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
+                            >
+                              <div>
+                                <p className="text-base font-semibold text-white">{item.name}</p>
+                                <p className="text-xs text-white/60">{item.quantity} × {item.price ? formatCurrency(item.price) : "Quote pending"}</p>
+                                {item.size && <p className="mt-1 text-xs text-white/50">Size: {item.size}</p>}
+                                {item.description && <p className="mt-1 text-xs text-white/50">{item.description}</p>}
+                              </div>
+                              <span className="text-sm font-semibold text-white">{item.quantity ? formatCurrency(itemTotal) : "-"}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-white/25 bg-white/5 p-5 text-center text-white/70">
+                          <p>No products selected yet.</p>
+                          <button
+                            type="button"
+                            onClick={handleReturnToProducts}
+                            className="mt-3 inline-flex items-center justify-center rounded-full border border-red-500/60 bg-red-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-red-200 transition hover:bg-red-500/20"
                           >
-                            <input
-                              type="radio"
-                              name="product"
-                              value={option.value}
-                              className="sr-only"
-                              disabled={out}
-                              checked={active}
-                              onChange={() => handleRadioChange("product", option.value)}
-                            />
-                            <span className="flex items-center justify-between text-white">
-                              <span className="text-base font-semibold">{option.label}</span>
-                              {out ? (
-                                <span className="inline-flex items-center rounded-full bg-red-600/20 text-red-300 border border-red-500/40 px-2 py-0.5 text-xs font-semibold">
-                                  Out of stock
-                                </span>
-                              ) : (
-                                option.price ? (
-                                  <span className="text-sm text-white/70">{formatCurrency(option.price)}</span>
-                                ) : (
-                                  <span className="text-sm text-white/60">Custom quote</span>
-                                )
-                              )}
-                            </span>
-                            {option.description && <span className="mt-2 text-sm text-white/60">{option.description}</span>}
-                            {option.heat && <span className="mt-3 inline-flex rounded-full border border-white/10 px-3 py-1 text-xs text-white/60">{option.heat}</span>}
-                            {!out && active && <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-red-400" />}
-                          </label>
-                        );
-                      })}
+                            Browse products
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    {isCustomProduct && (
-                      <div className="mt-3">
-                        <label className="text-xs font-medium uppercase tracking-wide text-white/60">Describe your custom blend</label>
-                        <input
-                          name="otherProduct"
-                          value={form.otherProduct}
-                          onChange={handleChange}
-                          placeholder="Tell us the flavour profile you want"
-                          className="mt-2 w-full rounded-2xl border border-dashed border-red-400/40 bg-red-500/10 px-4 py-3 text-white placeholder:text-white/50 focus:border-red-300 focus:outline-none"
-                        />
-                        {errors.otherProduct && <p className="mt-1 text-sm text-red-300">{errors.otherProduct}</p>}
-                      </div>
-                    )}
-                    {errors.product && <p className="mt-2 text-sm text-red-300">{errors.product}</p>}
+                    {errors.cart && <p className="mt-2 text-sm text-red-300">{errors.cart}</p>}
+                  </div>
+
+                  <div className="rounded-3xl border border-red-500/40 bg-red-600/15 p-5 text-white shadow-[0_20px_45px_-20px_rgba(248,113,113,0.6)]">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">Order summary</h3>
+                      <span className="text-xs font-medium uppercase tracking-wide text-white/50">Updated live</span>
+                    </div>
+                    <div className="mt-4 space-y-4 text-sm text-white/80">
+                      {resolvedCartItems.length ? (
+                        resolvedCartItems.map((item) => {
+                          const itemTotal = (Number(item.price) || 0) * item.quantity;
+                          return (
+                            <div key={`summary-${item.id || item.name}`} className="flex items-center justify-between gap-4">
+                              <div>
+                                <p className="font-semibold text-white">{item.name}</p>
+                                <p className="text-xs text-white/60">{item.quantity} × {item.price ? formatCurrency(item.price) : "Quote pending"}</p>
+                              </div>
+                              <span className="text-sm font-semibold text-white">{item.quantity ? formatCurrency(itemTotal) : "-"}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-white/70">Add products to see your summary update instantly.</p>
+                      )}
+                      <hr className="border-white/20" />
+                      <p className="flex justify-between"><span>Subtotal</span><span>{cartSubTotal ? formatCurrency(cartSubTotal) : "-"}</span></p>
+                      <p className="flex justify-between"><span>Delivery fee</span><span>{cartSubTotal ? formatCurrency(deliveryFee) : "Calculated at confirmation"}</span></p>
+                      <p className="flex justify-between text-base font-semibold"><span>Total</span><span>{cartSubTotal ? formatCurrency(total) : "We will confirm"}</span></p>
+                    </div>
                   </div>
 
                   <div>
@@ -495,7 +535,8 @@ const OrderNow = () => {
 
                   <button
                     type="submit"
-                    className="w-full rounded-2xl bg-gradient-to-r from-red-600 via-red-500 to-red-600 py-4 text-lg font-semibold text-white shadow-lg shadow-red-900/40 transition hover:brightness-110"
+                    disabled={!canSubmit}
+                    className={`w-full rounded-2xl bg-gradient-to-r from-red-600 via-red-500 to-red-600 py-4 text-lg font-semibold text-white shadow-lg shadow-red-900/40 transition ${canSubmit ? 'hover:brightness-110' : 'opacity-40 cursor-not-allowed hover:brightness-100'}`}
                   >
                     Confirm order
                   </button>
@@ -503,20 +544,7 @@ const OrderNow = () => {
               )}
               </div>
 
-              <div className="lg:col-span-2 space-y-6">
-                <div className="rounded-3xl border border-red-500/40 bg-red-600/15 p-6 text-white shadow-[0_20px_45px_-20px_rgba(248,113,113,0.6)]">
-                  <h3 className="text-lg font-semibold">Order summary</h3>
-                  <div className="mt-4 space-y-3 text-sm text-white/80">
-                    <p className="flex justify-between"><span>Selected blend</span><span className="font-semibold text-white">{isCustomProduct ? (form.otherProduct || "Custom blend") : selectedProduct?.label}</span></p>
-                    <p className="flex justify-between"><span>Unit price</span><span>{unitPrice ? formatCurrency(unitPrice) : "To be confirmed"}</span></p>
-                    <p className="flex justify-between"><span>Quantity</span><span>{quantity || "-"}</span></p>
-                    <p className="flex justify-between"><span>Subtotal</span><span>{subTotal ? formatCurrency(subTotal) : "-"}</span></p>
-                    <p className="flex justify-between"><span>Delivery fee</span><span>{subTotal ? formatCurrency(deliveryFee) : "Calculated at confirmation"}</span></p>
-                    <hr className="border-white/20" />
-                    <p className="flex justify-between text-base font-semibold"><span>Total</span><span>{subTotal ? formatCurrency(total) : "We will confirm"}</span></p>
-                  </div>
-                </div>
-
+              <div className="lg:col-span-2">
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white">
                   <h3 className="text-lg font-semibold">Why Kochchi delivery?</h3>
                   <ul className="mt-4 space-y-3 text-sm text-white/70">

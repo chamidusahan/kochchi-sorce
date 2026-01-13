@@ -1,8 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Leaf, Flame } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const AboutSection = () => {
+  const navigate = useNavigate();
   return (
   <section id="about" className="py-20 bg-gradient-to-b from-black via-black to-red-950">
       <div className="container mx-auto px-4">
@@ -29,7 +31,7 @@ const AboutSection = () => {
           >
             <div className="relative overflow-hidden rounded-lg shadow-xl shadow-red-900/20">
               <img
-                src="public\images\banner.jpg"
+                src="/images/banner.jpg"
                 alt="Nai Kochchi (Cobra Chili)"
                 className="w-full h-auto rounded-lg"
               />
@@ -55,7 +57,7 @@ const AboutSection = () => {
             className="space-y-6"
           >
             <h3 className="text-2xl md:text-3xl font-bold">
-              The Origins of <span className="text-red-500">Spice Up</span>
+              The Origins of <span className="text-emerald-400">SPICE</span> <span className="text-red-500">UP</span>
             </h3>
             <p className="text-gray-300">
               Our journey began in the vibrant spice gardens of Sri Lanka, home to the legendary Nai Kochchi (Cobra Chili) – one of the world's most potent chilies with a perfect balance of heat and flavor.
@@ -85,34 +87,30 @@ const AboutSection = () => {
               </div>
             </div>
 
-            <motion.div
-              className="inline-block relative overflow-hidden group"
+            <motion.button
+              className="relative inline-flex items-center space-x-2 font-bold text-red-500 transition-colors group"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
+              onClick={() => navigate('/about')}
             >
-              <a
-                href="#products"
-                className="inline-flex items-center space-x-2 font-bold text-red-500 group-hover:text-red-400 transition-colors"
+              <span className="group-hover:text-red-400">Discover More</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="transform transition-transform group-hover:translate-x-1"
               >
-                <span>Discover More</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transform group-hover:translate-x-1 transition-transform"
-                >
-                  <path d="M5 12h14"></path>
-                  <path d="m12 5 7 7-7 7"></path>
-                </svg>
-              </a>
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-500 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-            </motion.div>
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+              <span className="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-red-500 transition-transform duration-200 ease-out group-hover:scale-x-100" />
+            </motion.button>
           </motion.div>
         </div>
       </div>

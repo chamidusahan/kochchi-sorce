@@ -1,8 +1,7 @@
 
 
   import React, { useState, useEffect } from "react";
-  import { motion } from "framer-motion";
-  import { Flame } from "lucide-react";
+    import { motion } from "framer-motion";
   import { useLocation, useNavigate } from "react-router-dom";
   import { useAuth } from "../context/AuthContext.jsx";
 
@@ -106,8 +105,12 @@
           {/* Left side - brand / marketing */}
           <aside className="hidden md:flex flex-1 flex-col justify-center gap-6 p-10 bg-gradient-to-b from-black to-red-900 text-white">
             <div className="flex items-center gap-3">
-              <Flame size={36} className="text-red-500" />
-              <h2 className="text-2xl font-bold tracking-wider text-red-500">SPICE UP</h2>
+              <img
+                src="/images/123.png"
+                alt="Spice Up logo"
+                className="h-10 w-10 rounded-full border border-red-500/30 bg-black/40 object-cover"
+              />
+              <h2 className="text-2xl font-bold tracking-wider"><span className="text-emerald-400">SPICE</span> <span className="text-red-500">UP</span></h2>
             </div>
             <p className="text-gray-300 max-w-xs">Fast. Flavorful. Local. Sign in to order or create an account to save your favorites and reorder quickly.</p>
             <div className="w-20 h-1 bg-red-500 rounded" />

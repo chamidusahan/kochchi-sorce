@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, User, LogOut, X, ChevronDown } from "lucide-react";
+import { User, LogOut, X, ChevronDown } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -65,6 +65,7 @@ const Navbar = () => {
     { name: "Products", action: () => handleScroll("products") },
     { name: "Order Now", action: () => handleScroll("delivery") },
     { name: "Contact", action: () => handleScroll("contact") },
+    { name: "Cart", action: () => navigate("/order"), isRed: true },
   ];
 
   const getInitial = () => {
@@ -101,11 +102,19 @@ const Navbar = () => {
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
         <div
-          className="flex items-center space-x-2 cursor-pointer"
+          className="flex items-center gap-3 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <Flame size={28} className="text-red-600" />
-          <span className="font-bold text-2xl text-red-500">SPICE UP</span>
+          <img
+            src="/images/123.png"
+            alt="Spice Up logo"
+            className="h-14 w-14 object-contain"
+          />
+          <span className="font-bold text-3xl leading-none self-center">
+            <span className="text-green-400">SPICE</span>
+            {" "}
+            <span className="text-red-500">UP</span>
+          </span>
         </div>
 
         {/* Desktop Navigation */}
@@ -114,7 +123,11 @@ const Navbar = () => {
             <button
               key={item.name}
               onClick={item.action}
-              className="font-medium text-white hover:text-red-500 transition-colors"
+              className={`font-medium transition-colors ${
+                item.isRed
+                  ? "text-red-500 hover:text-red-400"
+                  : "text-white hover:text-red-500"
+              }`}
             >
               {item.name}
             </button>
@@ -211,7 +224,11 @@ const Navbar = () => {
                     item.action();
                     setMobileOpen(false);
                   }}
-                  className="text-lg font-semibold text-white hover:text-red-500 transition-colors"
+                  className={`text-lg font-semibold transition-colors ${
+                    item.isRed
+                      ? "text-red-500 hover:text-red-400"
+                      : "text-white hover:text-red-500"
+                  }`}
                 >
                   {item.name}
                 </button>

@@ -29,6 +29,13 @@ const statusVariants = {
     }
 };
 
+const previewMessage = (text, maxLength = 160) => {
+    if (!text) return '';
+    const normalized = text.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) return normalized;
+    return `${normalized.slice(0, maxLength).trim()}…`;
+};
+
 const Messages = () => {
     const [messages, setMessages] = React.useState([]);
     const [expandedId, setExpandedId] = React.useState(null);
@@ -190,7 +197,7 @@ const Messages = () => {
                                     className={`group bg-gradient-to-r from-transparent via-transparent to-black/10 transition ${status.accent}`}
                                 >
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-5 py-5">
-                                        <div className="flex-1 min-w-0">
+                                            <div className="flex-1 min-w-0">
                                             <div className="flex items-start gap-4">
                                                 <span className={`mt-1 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${status.badge}`}>
                                                     {status.label}
@@ -222,6 +229,11 @@ const Messages = () => {
                                                             {formatTime(message.createdAt)}
                                                         </span>
                                                     </div>
+                                                    {message.message && !isExpanded && (
+                                                        <p className="mt-3 text-sm text-white/70">
+                                                            {previewMessage(message.message)}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

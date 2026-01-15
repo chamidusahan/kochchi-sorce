@@ -1,37 +1,12 @@
-
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const products = [
-  {
-    id: 1,
-    name: 'Red Chili Sauce',
-    size: '250ml',
-    price: 1150,
-    image: '/images/productinfo.jpg',
-    description: 'Our signature hot sauce with the perfect balance of heat and flavor',
-  },
-  {
-    id: 2,
-    name: 'Green Chili Sauce',
-    size: '250ml',
-    price: 1100,
-    image: '/images/2.png',
-    description: 'For the brave souls who crave intense heat with every drop',
-  },
-  {
-    id: 3,
-    name: 'Garlic Fusion',
-    size: '250ml',
-    price: 1200,
-    image: 'https://freepngimg.com/thumb/sauce/163764-sauce-hot-bottle-free-download-image.png',
-    description: 'A perfect blend of garlic and chili for a flavor explosion',
-  },
-];
-
 const ProductCard = ({ product, index, quantity, onIncrement, onDecrement }) => {
+  const isOutOfStock = typeof product.stock === 'number' && product.stock <= 0;
+  const canIncrement = !isOutOfStock && (typeof product.stock !== 'number' || quantity < product.stock);
+  const canDecrement = quantity > 0;
 
   return (
     <motion.div
@@ -59,16 +34,23 @@ const ProductCard = ({ product, index, quantity, onIncrement, onDecrement }) => 
         <p className="text-gray-400 mb-4">{product.description}</p>
         <div className="flex justify-between items-end">
           <div>
-            <span className="text-sm text-gray-400">{product.size}</span>
+            {product.category && (
+              <span className="text-sm text-gray-400">{product.category}</span>
+            )}
             <div className="flex items-center mt-1">
-              <span className="text-2xl font-bold text-white">LKR. {product.price}</span>
+              <span className="text-2xl font-bold text-white">LKR. {product.price.toLocaleString('en-US')}</span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              {isOutOfStock ? 'Out of stock' : `${product.stock} in stock`}
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <motion.button
-              whileTap={{ scale: 0.9 }}
+              type="button"
+              whileTap={canDecrement ? { scale: 0.9 } : undefined}
               onClick={onDecrement}
-              className="w-9 h-9 rounded-full border border-red-500 text-red-400 hover:text-white hover:bg-red-600 transition"
+              disabled={!canDecrement}
+              className={`w-9 h-9 rounded-full border border-red-500 text-red-400 hover:text-white hover:bg-red-600 transition ${canDecrement ? '' : 'opacity-40 cursor-not-allowed'}`}
             >
               -
             </motion.button>
@@ -76,9 +58,11 @@ const ProductCard = ({ product, index, quantity, onIncrement, onDecrement }) => 
               {quantity}
             </span>
             <motion.button
-              whileTap={{ scale: 0.9 }}
+              type="button"
+              whileTap={canIncrement ? { scale: 0.9 } : undefined}
               onClick={onIncrement}
-              className="w-9 h-9 rounded-full bg-red-600 text-white hover:bg-red-500 transition"
+              disabled={!canIncrement}
+              className={`w-9 h-9 rounded-full bg-red-600 text-white hover:bg-red-500 transition ${canIncrement ? '' : 'opacity-40 cursor-not-allowed'}`}
             >
               +
             </motion.button>
@@ -102,18 +86,92 @@ const ProductCard = ({ product, index, quantity, onIncrement, onDecrement }) => 
 
 const ProductsSection = () => {
   const navigate = useNavigate();
-  const [cartQuantities, setCartQuantities] = useState(() => {
-    const initial = {};
-    products.forEach((product) => {
-      initial[product.id] = 0;
-    });
-    return initial;
-  });
+  const [products, setProducts] = useState([]);
+  const [cartQuantities, setCartQuantities] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadProducts = async () => {
+      setLoading(true);
+      setFetchError('');
+
+      try {
+        const response = await fetch('http://localhost/backend/admin/api/get-products.php', {
+          signal: controller.signal,
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.message || 'Failed to load products');
+        }
+
+        const normalizedProducts = (payload.data || [])
+          .filter((item) => (item.status || '').toLowerCase() !== 'inactive')
+          .map((item) => {
+            const parsedPrice = Number.parseFloat(item.price);
+            const parsedStock = Number.parseInt(item.stock, 10);
+
+            return {
+              id: item.id,
+              name: item.name || 'Unnamed product',
+              price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
+              image: item.image || '/images/productinfo.jpg',
+              description: item.category ? `Category: ${item.category}` : 'Authentic flavors, crafted for heat lovers.',
+              category: item.sku ? `SKU: ${item.sku}` : item.category || '',
+              stock: Number.isFinite(parsedStock) ? Math.max(parsedStock, 0) : 0,
+            };
+          });
+
+        setProducts(normalizedProducts);
+        setCartQuantities((prev) => {
+          const next = {};
+          normalizedProducts.forEach((product) => {
+            const persistedQuantity = prev[product.id] || 0;
+            next[product.id] = typeof product.stock === 'number'
+              ? Math.min(persistedQuantity, product.stock)
+              : persistedQuantity;
+          });
+          return next;
+        });
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+
+        console.error('Failed to load products', error);
+        setProducts([]);
+        setCartQuantities({});
+        setFetchError('Unable to load products right now. Please try again soon.');
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => controller.abort();
+  }, []);
 
   const handleIncrement = (id) => {
+    const product = products.find((item) => item.id === id);
+    if (!product) {
+      return;
+    }
+
     setCartQuantities((prev) => ({
       ...prev,
-      [id]: (prev[id] || 0) + 1,
+      [id]: (() => {
+        const nextValue = (prev[id] || 0) + 1;
+        if (typeof product.stock === 'number' && nextValue > product.stock) {
+          return prev[id] || 0;
+        }
+        return nextValue;
+      })(),
     }));
   };
 
@@ -131,9 +189,10 @@ const ProductsSection = () => {
         ...product,
         quantity: cartQuantities[product.id],
       }))
-  ), [cartQuantities]);
+  ), [cartQuantities, products]);
 
   const hasItems = selectedItems.length > 0;
+  const showProducts = !loading && !fetchError && products.length > 0;
 
   const handleAddToCart = () => {
     if (!hasItems) return;
@@ -141,85 +200,95 @@ const ProductsSection = () => {
   };
   
   return (
-  <section id="products" className="py-20 bg-gradient-to-b from-black via-black to-red-950 relative">
-    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')] opacity-10"></div>
-    <div className="container mx-auto px-4 relative z-10">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true, amount: 0.2 }}
-        className="text-center mb-16"
-      >
-        <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
-          Our <span className="text-red-500">Fiery</span> Products
-        </h2>
-        <div className="w-24 h-1 bg-red-600 mx-auto mb-6"></div>
-        <p className="max-w-2xl mx-auto text-gray-300">
-          Choose your level of heat and experience the authentic flavors of Sri Lanka in every bottle.
-        </p>
-      </motion.div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {products.map((product, index) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            index={index}
-            quantity={cartQuantities[product.id] || 0}
-            onIncrement={() => handleIncrement(product.id)}
-            onDecrement={() => handleDecrement(product.id)}
-          />
-        ))}
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.3 }}
-        viewport={{ once: true }}
-        className="flex justify-center mt-12"
-      >
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleAddToCart}
-          disabled={!hasItems}
-          className={`bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 text-white px-8 py-4 rounded-xl flex items-center space-x-3 transition shadow-lg shadow-red-900/40 text-lg font-semibold ${hasItems ? '' : 'opacity-40 cursor-not-allowed hover:brightness-100'}`}
+    <section id="products" className="py-20 bg-gradient-to-b from-black via-black to-red-950 relative">
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')] opacity-10"></div>
+      <div className="container mx-auto px-4 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true, amount: 0.2 }}
+          className="text-center mb-16"
         >
-          <ShoppingCart size={22} />
-          <span>Add to Cart</span>
-        </motion.button>
-      </motion.div>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
+            Our <span className="text-red-500">Fiery</span> Products
+          </h2>
+          <div className="w-24 h-1 bg-red-600 mx-auto mb-6"></div>
+          <p className="max-w-2xl mx-auto text-gray-300">
+            Choose your level of heat and experience the authentic flavors of Sri Lanka in every bottle.
+          </p>
+        </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        viewport={{ once: true, amount: 0.2 }}
-        className="mt-16 bg-gradient-to-r from-red-900/20 to-red-700/20 rounded-xl p-6 flex flex-col md:flex-row items-center justify-between"
-      >
-        <div className="flex items-center space-x-4 mb-4 md:mb-0">
-          <div className="bg-red-600/20 p-3 rounded-full">
-            <Truck className="text-red-500" size={24} />
-          </div>
-          <div>
-            <h4 className="font-bold text-xl text-white">Free Delivery</h4>
-            <p className="text-gray-400">On orders over Rs. 3000</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {loading && (
+            <div className="col-span-full text-center text-gray-400">Loading products...</div>
+          )}
+          {fetchError && !loading && (
+            <div className="col-span-full text-center text-red-400">{fetchError}</div>
+          )}
+          {showProducts &&
+            products.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                index={index}
+                quantity={cartQuantities[product.id] || 0}
+                onIncrement={() => handleIncrement(product.id)}
+                onDecrement={() => handleDecrement(product.id)}
+              />
+            ))}
+          {!loading && !fetchError && products.length === 0 && (
+            <div className="col-span-full text-center text-gray-400">No products available.</div>
+          )}
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          viewport={{ once: true }}
+          className="flex justify-center mt-12"
         >
-          <ShoppingCart size={18} />
-          <span>View All Products</span>
-        </motion.button>
-      </motion.div>
-    </div>
-  </section>
-);
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleAddToCart}
+            disabled={!hasItems}
+            className={`bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 text-white px-8 py-4 rounded-xl flex items-center space-x-3 transition shadow-lg shadow-red-900/40 text-lg font-semibold ${hasItems ? '' : 'opacity-40 cursor-not-allowed hover:brightness-100'}`}
+          >
+            <ShoppingCart size={22} />
+            <span>Add to Cart</span>
+          </motion.button>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          viewport={{ once: true, amount: 0.2 }}
+          className="mt-16 bg-gradient-to-r from-red-900/20 to-red-700/20 rounded-xl p-6 flex flex-col md:flex-row items-center justify-between"
+        >
+          <div className="flex items-center space-x-4 mb-4 md:mb-0">
+            <div className="bg-red-600/20 p-3 rounded-full">
+              <Truck className="text-red-500" size={24} />
+            </div>
+            <div>
+              <h4 className="font-bold text-xl text-white">Free Delivery</h4>
+              <p className="text-gray-400">On orders over Rs. 3000</p>
+            </div>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+          >
+            <ShoppingCart size={18} />
+            <span>View All Products</span>
+          </motion.button>
+        </motion.div>
+      </div>
+    </section>
+  );
 };
 
 export default ProductsSection;

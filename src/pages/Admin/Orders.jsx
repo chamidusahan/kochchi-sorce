@@ -18,12 +18,39 @@ import {
 
 const statusStyles = {
 	Pending: 'bg-amber-700/25 text-amber-200',
-	Paid: 'bg-blue-700/25 text-blue-300',
-	Processing: 'bg-blue-700/25 text-blue-300',
-	Completed: 'bg-green-700/25 text-green-300',
+	Confirmed: 'bg-blue-700/25 text-blue-300',
+	Preparing: 'bg-indigo-700/25 text-indigo-200',
+	Dispatched: 'bg-sky-700/25 text-sky-200',
+	'Out For Delivery': 'bg-cyan-700/25 text-cyan-200',
+	Delivered: 'bg-green-700/25 text-green-300',
 	Cancelled: 'bg-red-700/25 text-red-300',
+	Paid: 'bg-green-700/25 text-green-300',
+	Completed: 'bg-green-700/25 text-green-300',
+	Processing: 'bg-indigo-700/25 text-indigo-200',
 	default: 'bg-gray-700/25 text-gray-300'
 };
+
+const ORDER_STATUS_OPTIONS = [
+	'Pending',
+	'Confirmed',
+	'Preparing',
+	'Dispatched',
+	'Out For Delivery',
+	'Delivered',
+	'Cancelled'
+];
+
+const STATUS_FILTERS = ['All', ...ORDER_STATUS_OPTIONS];
+
+const IN_PROGRESS_STATUSES = new Set([
+	'Pending',
+	'Confirmed',
+	'Preparing',
+	'Dispatched',
+	'Out For Delivery'
+]);
+
+const FULFILLED_STATUSES = new Set(['Delivered']);
 
 const Orders = () => {
 	const [orders, setOrders] = React.useState([]);
@@ -103,16 +130,16 @@ const Orders = () => {
 
 	const orderSummary = React.useMemo(() => {
 		const totalRevenue = orders.reduce((sum, order) => 
-			order.status === 'Completed' ? sum + order.total : sum, 0
-		);
-		const pendingCount = orders.filter(o => o.status === 'Pending').length;
-		const completedCount = orders.filter(o => o.status === 'Completed').length;
+			FULFILLED_STATUSES.has(order.status) ? sum + order.total : sum
+		, 0);
+		const inProgressCount = orders.filter(o => IN_PROGRESS_STATUSES.has(o.status)).length;
+		const deliveredCount = orders.filter(o => FULFILLED_STATUSES.has(o.status)).length;
 		const creditBillsCount = myBills.filter(b => b.paymentMethod === 'Credit').length;
 
 		return [
-			{ label: 'Total Revenue', value: `Rs. ${totalRevenue.toLocaleString()}`, delta: 'From completed orders', icon: DollarSign, accent: 'text-green-400', border: 'border-green-700/60' },
-			{ label: 'Pending Orders', value: String(pendingCount), delta: 'Awaiting processing', icon: Clock, accent: 'text-amber-300', border: 'border-amber-700/60' },
-			{ label: 'Completed', value: String(completedCount), delta: 'Successfully delivered', icon: CheckCircle, accent: 'text-green-300', border: 'border-green-700/60' },
+			{ label: 'Total Revenue', value: `Rs. ${totalRevenue.toLocaleString()}`, delta: 'From delivered orders', icon: DollarSign, accent: 'text-green-400', border: 'border-green-700/60' },
+			{ label: 'Active Orders', value: String(inProgressCount), delta: 'Awaiting fulfilment', icon: Clock, accent: 'text-amber-300', border: 'border-amber-700/60' },
+			{ label: 'Delivered', value: String(deliveredCount), delta: 'Successfully completed', icon: CheckCircle, accent: 'text-green-300', border: 'border-green-700/60' },
 			{ label: 'Credit Bills', value: String(creditBillsCount), delta: 'Payment pending', icon: FileText, accent: 'text-orange-300', border: 'border-orange-700/60' },
 		];
 	}, [orders, myBills]);
@@ -225,7 +252,7 @@ const Orders = () => {
 				customerPhone: quickBillForm.phone,
 				customerAddress: quickBillForm.address || '',
 				paymentMethod: quickBillForm.paymentMethod,
-				status: 'Completed',
+				status: 'Delivered',
 				total,
 				deliveryFee: delivery,
 				notes: `Walk-in customer: ${quickBillForm.customerName}, Phone: ${quickBillForm.phone}, Address: ${quickBillForm.address || 'N/A'}`,
@@ -271,7 +298,7 @@ const Orders = () => {
 					subtotal,
 					delivery,
 					total,
-					status: 'Completed',
+					status: 'Delivered',
 					paymentMethod: quickBillForm.paymentMethod,
 					shippingAddress: quickBillForm.address || 'N/A'
 				};
@@ -371,10 +398,11 @@ const Orders = () => {
 						style={{ backgroundColor: '#0f141c', color: '#fff' }}
 					>
 						<option value="" style={{ backgroundColor: '#0f141c', color: '#fff' }}>All statuses</option>
-						<option value="Pending" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Pending</option>
-						<option value="Processing" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Processing</option>
-						<option value="Completed" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Completed</option>
-						<option value="Cancelled" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Cancelled</option>
+						{ORDER_STATUS_OPTIONS.map(status => (
+							<option key={status} value={status} style={{ backgroundColor: '#0f141c', color: '#fff' }}>
+								{status}
+							</option>
+						))}
 					</select>
 				</div>
 				<button
@@ -430,10 +458,16 @@ const Orders = () => {
 						<div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
 							<h2 className="text-base md:text-lg font-bold text-white">All Customer Orders</h2>
 							<div className="flex flex-wrap gap-2">
-								<button className="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-300 text-xs font-semibold">All</button>
-								<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Pending</button>
-								<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Processing</button>
-								<button className="px-3 py-1.5 rounded-lg bg-gray-800/80 text-white/70 text-xs">Completed</button>
+								{STATUS_FILTERS.map((status, index) => {
+									const baseClasses = 'px-3 py-1.5 rounded-lg text-xs';
+									const activeClasses = 'bg-red-600/20 text-red-300 font-semibold';
+									const inactiveClasses = 'bg-gray-800/80 text-white/70';
+									return (
+										<button key={status} className={`${baseClasses} ${index === 0 ? activeClasses : inactiveClasses}`}>
+											{status}
+										</button>
+									);
+								})}
 							</div>
 						</div>
 						<div className="overflow-x-auto -mx-4 md:mx-0">
@@ -481,8 +515,11 @@ const Orders = () => {
 															className="ml-2 bg-gray-900/70 border border-gray-800 rounded-md py-1 px-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-red-500/60"
 															style={{ backgroundColor: '#0f141c', color: '#fff' }}
 														>
-															<option value="Pending" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Pending</option>
-															<option value="Completed" style={{ backgroundColor: '#0f141c', color: '#fff' }}>Completed</option>
+															{ORDER_STATUS_OPTIONS.map(status => (
+																<option key={status} value={status} style={{ backgroundColor: '#0f141c', color: '#fff' }}>
+																	{status}
+																</option>
+															))}
 														</select>
 													</div>
 												</td>
@@ -661,7 +698,7 @@ const Orders = () => {
 									<p className="text-xs font-semibold uppercase text-white/50 mb-1 print:text-gray-500 print:text-sm">Payment Method</p>
 									<p className="text-sm text-white print:text-black print:text-base">{selectedOrder.paymentMethod}</p>
 									<p className="text-xs font-semibold uppercase text-white/50 mt-3 mb-1 print:text-gray-500 print:text-sm">Status</p>
-									<span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[selectedOrder.status]} print:border print:border-gray-400 print:bg-transparent print:text-gray-700 print:text-sm`}>
+									<span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[selectedOrder.status] ?? statusStyles.default} print:border print:border-gray-400 print:bg-transparent print:text-gray-700 print:text-sm`}>
 										{selectedOrder.status}
 									</span>
 								</div>

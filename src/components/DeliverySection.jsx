@@ -26,6 +26,12 @@ const deliveryFeatures = [
 ];
 
 const DeliverySection = () => {
+  const handleContactClick = () => {
+    const section = document.getElementById('contact');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
   return (
     <section
       id="delivery"
@@ -86,6 +92,7 @@ const DeliverySection = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold transition-colors"
+              onClick={handleContactClick}
             >
               Contact Us
             </motion.button>

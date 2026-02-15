@@ -6,8 +6,30 @@ const DELIVERY_FEE = 350;
 
 const paymentOptions = [
   { value: "COD", label: "Cash on Delivery", description: "Pay when the order arrives", accent: "border-green-500/60 bg-green-500/10" },
-  { value: "VISA", label: "Visa / MasterCard", description: "Secure online payment", accent: "border-blue-500/60 bg-blue-500/10" }
+  { value: "BT", label: "Bank Transfer", description: "Transfer to our Kochchi bank account", accent: "border-amber-500/60 bg-amber-500/10" },
+  { value: "Card", label: "Visa / MasterCard", description: "Secure online payment", accent: "border-blue-500/60 bg-blue-500/10" }
 ];
+
+const bankAccountDetails = {
+  name: "Kochchi Kitchens (Pvt) Ltd",
+  number: "097654321987",
+  bank: "Commercial Bank of Ceylon",
+  branch: "Colombo Fort",
+};
+
+const nextSteps = [
+  "Transfer the total amount to the account listed below.",
+  "Screenshot or scan your payment advice once the transfer completes.",
+  "Upload the slip here or email it to payments@kochchi.lk with your order ID.",
+];
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
 
 const formatCurrency = (amount) => `Rs. ${amount.toLocaleString()}`;
 
@@ -53,6 +75,8 @@ const OrderNow = () => {
   const [submitted, setSubmitted] = useState(false);
   const [orderSummary, setOrderSummary] = useState(null);
   const [dbProducts, setDbProducts] = useState([]);
+  const [slipFile, setSlipFile] = useState(null);
+  const [uploadError, setUploadError] = useState("");
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -138,7 +162,7 @@ const OrderNow = () => {
   const cartSubTotal = resolvedCartItems.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
   const deliveryFee = cartSubTotal > 0 ? DELIVERY_FEE : 0;
   const total = cartSubTotal + deliveryFee;
-  const canSubmit = resolvedCartItems.length > 0;
+  const canSubmit = resolvedCartItems.length > 0 && (form.paymentMethod !== "BT" || (!!slipFile && !uploadError));
 
   const validate = () => {
     const e = {};
@@ -150,6 +174,10 @@ const OrderNow = () => {
     if (!/^\+?[0-9\s-]{7,15}$/.test(form.phone.trim())) e.phone = "Please enter a valid phone number";
     if (!resolvedCartItems.length) e.cart = "Please add at least one product before confirming your order.";
     if (!form.paymentMethod) e.paymentMethod = "Select a payment method";
+    if (form.paymentMethod === "BT") {
+      if (uploadError) e.paymentProof = uploadError;
+      else if (!slipFile) e.paymentProof = "Upload the transfer slip to continue";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -161,16 +189,54 @@ const OrderNow = () => {
 
   const handleRadioChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "paymentMethod" && value !== "BT") {
+      setSlipFile(null);
+      setUploadError("");
+    }
+  };
+
+  const handleSlipChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setSlipFile(null);
+      setUploadError("");
+      return;
+    }
+
+    const validSize = file.size <= 5 * 1024 * 1024;
+    if (!validSize) {
+      setSlipFile(null);
+      setUploadError("File must be 5 MB or smaller");
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      setSlipFile(null);
+      setUploadError("Upload JPEG, PNG, WEBP, or PDF only");
+      return;
+    }
+
+    setSlipFile(file);
+    setUploadError("");
   };
 
   const resetForm = () => {
     setForm(createInitialForm());
     setErrors({});
     setCartItems([]);
+    setSlipFile(null);
+    setUploadError("");
   };
 
   const handleReturnToProducts = () => {
     navigate('/', { state: { from: 'order', focus: 'products' } });
+    setTimeout(() => {
+      const section = document.getElementById('products');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 400);
   };
 
   const handleSubmit = async (e) => {
@@ -185,6 +251,12 @@ const OrderNow = () => {
 
     // Persist to backend (customer_orders)
     try {
+      let paymentProof = null;
+      if (form.paymentMethod === "BT" && slipFile) {
+        // Encode slip once so the backend can store it without handling multipart uploads.
+        paymentProof = await readFileAsDataUrl(slipFile);
+      }
+
       const itemsPayload = resolvedCartItems.map((item) => {
         const productId = Number.parseInt(item.id, 10);
         const safePrice = Number(item.price) || 0;
@@ -203,13 +275,14 @@ const OrderNow = () => {
       const payload = {
         totalAmount: total,
         paymentMethod: form.paymentMethod, // 'COD' | 'VISA' -> server maps to DB enum
-        paymentStatus: 'Pending',
+        paymentStatus: 'Confirmed',
         shippingPhone: form.phone,
         shippingAddress: form.address,
         city: form.city,
         district: form.district,
         postalCode: form.postalCode,
-        items: itemsPayload
+        items: itemsPayload,
+        ...(paymentProof ? { paymentProof, paymentProofName: slipFile.name } : {}),
       };
 
       const res = await fetch('http://localhost/backend/user/api/create-order.php', {
@@ -241,6 +314,8 @@ const OrderNow = () => {
         })),
         orderId: data.orderId
       });
+      setSlipFile(null);
+      setUploadError("");
       setSubmitted(true);
     } catch (err) {
       console.error('Create order failed', err);
@@ -518,6 +593,48 @@ const OrderNow = () => {
                       })}
                     </div>
                     {errors.paymentMethod && <p className="mt-2 text-sm text-red-300">{errors.paymentMethod}</p>}
+                    {form.paymentMethod === "BT" && (
+                      <div className="mt-5 space-y-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5 text-white">
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-wide text-amber-200">Bank transfer details</p>
+                          <div className="mt-3 grid gap-2 text-sm text-white/80 sm:grid-cols-2">
+                            <span>
+                              <span className="text-white/60">Account name:</span> {bankAccountDetails.name}
+                            </span>
+                            <span>
+                              <span className="text-white/60">Account number:</span> {bankAccountDetails.number}
+                            </span>
+                            <span>
+                              <span className="text-white/60">Bank:</span> {bankAccountDetails.bank}
+                            </span>
+                            <span>
+                              <span className="text-white/60">Branch:</span> {bankAccountDetails.branch}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-wide text-amber-200">Next steps</p>
+                          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-white/80">
+                            {nextSteps.map((step, idx) => (
+                              <li key={`bt-step-${idx}`}>{step}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <label className="text-sm font-semibold text-white/80">Upload transfer slip</label>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,application/pdf"
+                            onChange={handleSlipChange}
+                            className="mt-2 w-full cursor-pointer rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/70 file:mr-4 file:rounded-lg file:border-0 file:bg-amber-500/90 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black hover:border-amber-400/60"
+                          />
+                          {slipFile && <p className="mt-2 text-xs text-white/60">Selected file: {slipFile.name}</p>}
+                          {(errors.paymentProof || uploadError) && (
+                            <p className="mt-2 text-sm text-red-300">{errors.paymentProof || uploadError}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <p className="mt-3 text-xs text-white/50">We support cash on delivery, Visa, MasterCard, and Maestro via our secure payment gateway.</p>
                   </div>
 

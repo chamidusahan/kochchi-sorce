@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, LogOut, X, ChevronDown } from "lucide-react";
+import { User, LogOut, X, ChevronDown, ShoppingCart } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -65,7 +65,7 @@ const Navbar = () => {
     { name: "Products", action: () => handleScroll("products") },
     { name: "Order Now", action: () => handleScroll("delivery") },
     { name: "Contact", action: () => handleScroll("contact") },
-    { name: "Cart", action: () => navigate("/order"), isRed: true },
+    { name: "Cart", action: () => navigate("/order"), isRed: true, icon: ShoppingCart },
   ];
 
   const getInitial = () => {
@@ -111,7 +111,7 @@ const Navbar = () => {
             className="h-14 w-14 object-contain"
           />
           <span className="font-bold text-3xl leading-none self-center">
-            <span className="text-green-400">SPICE</span>
+            <span className="text-lime-700">SPICE</span>
             {" "}
             <span className="text-red-500">UP</span>
           </span>
@@ -129,7 +129,10 @@ const Navbar = () => {
                   : "text-white hover:text-red-500"
               }`}
             >
-              {item.name}
+              <span className="inline-flex items-center gap-2">
+                {item.icon ? <item.icon size={18} /> : null}
+                <span>{item.name}</span>
+              </span>
             </button>
           ))}
 
@@ -230,7 +233,10 @@ const Navbar = () => {
                       : "text-white hover:text-red-500"
                   }`}
                 >
-                  {item.name}
+                  <span className="inline-flex items-center gap-2">
+                    {item.icon ? <item.icon size={20} /> : null}
+                    <span>{item.name}</span>
+                  </span>
                 </button>
               ))}
               {loading ? (

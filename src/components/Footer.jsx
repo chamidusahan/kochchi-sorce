@@ -37,7 +37,10 @@ const Footer = () => {
               />
               <div>
                 <p className="text-sm uppercase tracking-[0.6em] text-red-400 font-semibold">Feel The Heat</p>
-                <h2 className="text-3xl font-extrabold tracking-wide">SPICE UP</h2>
+                <h2 className="text-3xl font-extrabold tracking-wide">
+                  <span className="text-lime-700">SPICE</span>{" "}
+                  <span className="text-red-500">UP</span>
+                </h2>
               </div>
             </div>
             <p className="text-gray-300 leading-relaxed text-sm md:text-base max-w-lg">

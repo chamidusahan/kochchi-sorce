@@ -110,7 +110,7 @@
                 alt="Spice Up logo"
                 className="h-10 w-10 rounded-full border border-red-500/30 bg-black/40 object-cover"
               />
-              <h2 className="text-2xl font-bold tracking-wider"><span className="text-emerald-400">SPICE</span> <span className="text-red-500">UP</span></h2>
+              <h2 className="text-2xl font-bold tracking-wider"><span className="text-lime-700">SPICE</span> <span className="text-red-500">UP</span></h2>
             </div>
             <p className="text-gray-300 max-w-xs">Fast. Flavorful. Local. Sign in to order or create an account to save your favorites and reorder quickly.</p>
             <div className="w-20 h-1 bg-red-500 rounded" />

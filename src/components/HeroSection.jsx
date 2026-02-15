@@ -1,70 +1,54 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+const CHILI_VARIANTS = ["/images/rc.png", "/images/gc.png"];
+
 const HeroSection = () => {
   const navigate = useNavigate();
 
-  // Memoize the floating elements to prevent re-renders from resetting animations
-  const floatingChillies = useMemo(() => {
-    return [...Array(12)].map((_, i) => {
-      const randomDelay = Math.random() * 5;
-      const randomDuration = 15 + Math.random() * 10;
-      const startX = Math.random() * 100;
-      const startY = Math.random() * 100;
-      
-      // Generate smooth bezier curve paths
-      const path1X = Math.random() * 100;
-      const path1Y = Math.random() * 100;
-      const path2X = Math.random() * 100;
-      const path2Y = Math.random() * 100;
-      const path3X = Math.random() * 100;
-      const path3Y = Math.random() * 100;
-      
-      return {
-        key: `chili-${i}`,
-        startX,
-        startY,
-        path1X,
-        path1Y,
-        path2X,
-        path2Y,
-        path3X,
-        path3Y,
-        randomDelay,
-        randomDuration,
-      };
-    });
-  }, []);
+  // Precompute chili animation data once so each item keeps its own path
+  const floatingChilies = useMemo(() => {
+    const totalChilies = 15;
+    const gridColumns = 5;
+    const gridBaseY = 68;
+    const gridSpacingY = 6;
+    const gridOffsetX = 16;
+    const gridSpacingX = 14;
 
-  const floatingGarlic = useMemo(() => {
-    return [...Array(6)].map((_, i) => {
-      const randomDelay = Math.random() * 4;
-      const randomDuration = 18 + Math.random() * 12;
-      const startX = Math.random() * 100;
-      const startY = Math.random() * 100;
-      
-      // Generate smooth bezier curve paths
-      const path1X = Math.random() * 100;
-      const path1Y = Math.random() * 100;
-      const path2X = Math.random() * 100;
-      const path2Y = Math.random() * 100;
-      const path3X = Math.random() * 100;
-      const path3Y = Math.random() * 100;
-      
+    return Array.from({ length: totalChilies }).map((_, index) => {
+      const sprite = CHILI_VARIANTS[index % CHILI_VARIANTS.length];
+      const column = index % gridColumns;
+      const row = Math.floor(index / gridColumns);
+      const endX = gridOffsetX + column * gridSpacingX + (Math.random() * 2 - 1);
+      const endY = gridBaseY + row * gridSpacingY + Math.random() * 1.5;
+      const startOffset = Math.random() * 12 - 6;
+      const startX = Math.min(92, Math.max(8, endX + startOffset));
+      const midX = endX + (Math.random() * 6 - 3);
+      const midY = 42 + Math.random() * 6;
+      const duration = 7 + Math.random() * 3;
+      const delay = Math.random() * 3;
+      const size = 36 + Math.random() * 14;
+      const startScale = 0.8 + Math.random() * 0.4;
+      const startRot = -12 + Math.random() * 24;
+      const midRot = -6 + Math.random() * 12;
+
       return {
-        key: `garlic-${i}`,
+        key: `hero-chili-${index}`,
+        sprite,
         startX,
-        startY,
-        path1X,
-        path1Y,
-        path2X,
-        path2Y,
-        path3X,
-        path3Y,
-        randomDelay,
-        randomDuration,
+        midX,
+        midY,
+        endX,
+        endY,
+        duration,
+        delay,
+        size,
+        startScale,
+        startRot,
+        midRot,
+        flip: Math.random() > 0.5,
       };
     });
   }, []);
@@ -72,100 +56,33 @@ const HeroSection = () => {
   return (
     <section
       id="home"
-  className="relative h-screen w-full overflow-hidden bg-gradient-to-b from-black via-black to-red-950"
+      className="relative h-screen w-full overflow-hidden bg-gradient-to-b from-black via-black to-red-950"
     >
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Floating chili peppers - smooth continuous motion */}
-        {floatingChillies.map((chili) => (
-          <motion.div
-            key={chili.key}
-            className="absolute"
-            initial={{
-              x: `${chili.startX}vw`,
-              y: `${chili.startY}vh`,
-              rotate: 0,
-            }}
-            animate={{
-              x: [
-                `${chili.startX}vw`,
-                `${chili.path1X}vw`,
-                `${chili.path2X}vw`,
-                `${chili.path3X}vw`,
-                `${chili.startX}vw`,
-              ],
-              y: [
-                `${chili.startY}vh`,
-                `${chili.path1Y}vh`,
-                `${chili.path2Y}vh`,
-                `${chili.path3Y}vh`,
-                `${chili.startY}vh`,
-              ],
-              rotate: [0, 120, 240, 360, 480],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: chili.randomDuration,
-              delay: chili.randomDelay,
-              ease: "easeInOut",
-              times: [0, 0.25, 0.5, 0.75, 1],
-            }}
-          >
-            <motion.img
-              src="https://cdn-icons-png.flaticon.com/512/1147/1147805.png"
-              alt=""
-              className="h-8 md:h-12 lg:h-16 select-none pointer-events-none"
-              animate={{
-                opacity: [0.15, 0.3, 0.2, 0.35, 0.15],
-                scale: [1, 1.1, 0.9, 1.05, 1],
+      <div className="absolute inset-0 pointer-events-none z-20">
+        <div className="hero-chili-field">
+          {floatingChilies.map((chili) => (
+            <div
+              key={chili.key}
+              className={`hero-chili${chili.flip ? " hero-chili--flip" : ""}`}
+              style={{
+                "--start-x": `${chili.startX}`,
+                "--mid-x": `${chili.midX}`,
+                "--mid-y": `${chili.midY}`,
+                "--end-x": `${chili.endX}`,
+                "--end-y": `${chili.endY}`,
+                "--start-scale": `${chili.startScale}`,
+                "--start-rot": `${chili.startRot}`,
+                "--mid-rot": `${chili.midRot}`,
+                width: `${chili.size}px`,
+                animationDuration: `${chili.duration}s`,
+                animationDelay: `${chili.delay}s`,
               }}
-              transition={{
-                repeat: Infinity,
-                duration: chili.randomDuration / 2,
-                ease: "easeInOut",
-              }}
-            />
-          </motion.div>
-        ))}
-
-        {/* Floating garlic - smooth continuous motion */}
-        {floatingGarlic.map((garlic) => (
-          <motion.div
-            key={garlic.key}
-            className="absolute"
-            initial={{
-              x: `${garlic.startX}vw`,
-              y: `${garlic.startY}vh`,
-              rotate: 0,
-            }}
-            animate={{
-              x: [
-                `${garlic.startX}vw`,
-                `${garlic.path1X}vw`,
-                `${garlic.path2X}vw`,
-                `${garlic.path3X}vw`,
-                `${garlic.startX}vw`,
-              ],
-              y: [
-                `${garlic.startY}vh`,
-                `${garlic.path1Y}vh`,
-                `${garlic.path2Y}vh`,
-                `${garlic.path3Y}vh`,
-                `${garlic.startY}vh`,
-              ],
-              rotate: [0, -120, -240, -360, -480],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: garlic.randomDuration,
-              delay: garlic.randomDelay,
-              ease: "easeInOut",
-              times: [0, 0.25, 0.5, 0.75, 1],
-            }}
-          >
-            
-          </motion.div>
-        ))}
+            >
+              <img src={chili.sprite} alt="" loading="lazy" />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Hero Content */}
@@ -179,7 +96,7 @@ const HeroSection = () => {
           >
             Turn up the Heat with <br />
             <span className="inline-block">
-              <span className="text-green-400">SPICE</span>{" "}
+              <span className="text-lime-600">SPICE</span>{" "}
               <span className="text-red-500">UP</span>
             </span>
           </motion.h1>
@@ -214,9 +131,7 @@ const HeroSection = () => {
         {/* Bottle Image */}
         <div className="md:w-1/2 flex justify-center mt-12 md:mt-0 z-10">
           <motion.div
-            className="relative w-64 h-64 md:w-80 md:h-80"
-            whileHover={{ rotate: 360 }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
+            className="relative w-72 h-80 md:w-[26rem] md:h-[30rem] md:translate-y-6"
           >
             <img
               src="/images/product1.png"

@@ -5,6 +5,13 @@ import { useNavigate } from 'react-router-dom';
 
 const AboutSection = () => {
   const navigate = useNavigate();
+
+  const handleDiscoverMore = () => {
+    navigate('/about');
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
   return (
   <section id="about" className="py-20 bg-gradient-to-b from-black via-black to-red-950">
       <div className="container mx-auto px-4">
@@ -41,12 +48,7 @@ const AboutSection = () => {
                 <p className="text-red-300">The Cobra Chili</p>
               </div>
             </div>
-            <div className="absolute -top-4 -right-4 bg-red-600 w-24 h-24 rounded-full flex items-center justify-center rotate-12 shadow-lg">
-              <div className="text-center">
-                <div className="font-bold text-xl">100%</div>
-                <div className="text-sm">Natural</div>
-              </div>
-            </div>
+           
           </motion.div>
 
           <motion.div
@@ -57,7 +59,7 @@ const AboutSection = () => {
             className="space-y-6"
           >
             <h3 className="text-2xl md:text-3xl font-bold">
-              The Origins of <span className="text-emerald-400">SPICE</span> <span className="text-red-500">UP</span>
+              The Origins of <span className="text-lime-700">SPICE</span> <span className="text-red-500">UP</span>
             </h3>
             <p className="text-gray-300">
               Our journey began in the vibrant spice gardens of Sri Lanka, home to the legendary Nai Kochchi (Cobra Chili) – one of the world's most potent chilies with a perfect balance of heat and flavor.
@@ -91,7 +93,7 @@ const AboutSection = () => {
               className="relative inline-flex items-center space-x-2 font-bold text-red-500 transition-colors group"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
-              onClick={() => navigate('/about')}
+              onClick={handleDiscoverMore}
             >
               <span className="group-hover:text-red-400">Discover More</span>
               <svg

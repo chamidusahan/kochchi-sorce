@@ -95,10 +95,18 @@ const MyOrders = () => {
 
   const getStatusBadge = (status) => {
     const styles = {
-      Pending: "bg-amber-700/25 text-amber-200 border-amber-500/40",
-      Paid: "bg-green-700/25 text-green-300 border-green-500/40",
+      Confirmed: "bg-amber-700/25 text-amber-200 border-amber-500/40",
+      Preparing: "bg-blue-700/25 text-blue-200 border-blue-500/40",
+      "Out For Delivery": "bg-purple-700/25 text-purple-200 border-purple-500/40",
+      Delivered: "bg-green-700/25 text-green-300 border-green-500/40",
+      Cancelled: "bg-red-700/25 text-red-200 border-red-500/40",
     };
     return styles[status] || "bg-gray-700/25 text-gray-300 border-gray-500/40";
+  };
+
+  const canCancelOrder = (status) => {
+    const cancellableStatuses = ["Confirmed", "Preparing"];
+    return cancellableStatuses.includes(status);
   };
 
   const getPaymentBadge = (method) => {
@@ -180,7 +188,12 @@ const MyOrders = () => {
                       >
                         {order.paymentStatus}
                       </span>
-                      {order.paymentStatus === 'Pending' && (
+                      {order.trackingNumber && (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-600/20 text-cyan-200 border border-cyan-400/40">
+                          Tracking #{order.trackingNumber}
+                        </span>
+                      )}
+                      {canCancelOrder(order.paymentStatus) && (
                         <button
                           onClick={() => cancelOrder(order.orderId)}
                           className="px-3 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 text-xs font-semibold transition-colors border border-red-500/40"

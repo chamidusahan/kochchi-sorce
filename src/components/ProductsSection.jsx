@@ -113,12 +113,18 @@ const ProductsSection = () => {
           .map((item) => {
             const parsedPrice = Number.parseFloat(item.price);
             const parsedStock = Number.parseInt(item.stock, 10);
+            const rawImage = (item.image || '').trim();
+            const imagePath = rawImage.startsWith('http')
+              ? rawImage
+              : rawImage
+                ? `http://localhost/backend${rawImage.startsWith('/') ? '' : '/'}${rawImage}`
+                : '';
 
             return {
               id: item.id,
               name: item.name || 'Unnamed product',
               price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
-              image: item.image || '/images/productinfo.jpg',
+              image: imagePath ,
               description: item.category ? `Category: ${item.category}` : 'Authentic flavors, crafted for heat lovers.',
               category: item.sku ? `SKU: ${item.sku}` : item.category || '',
               stock: Number.isFinite(parsedStock) ? Math.max(parsedStock, 0) : 0,
@@ -273,18 +279,11 @@ const ProductsSection = () => {
               <Truck className="text-red-500" size={24} />
             </div>
             <div>
-              <h4 className="font-bold text-xl text-white">Free Delivery</h4>
-              <p className="text-gray-400">On orders over Rs. 3000</p>
+              <h4 className="font-bold text-xl text-white">Fast Delivery</h4>
+              <p className="text-gray-400">Islandwide dispatch within 48 hours</p>
             </div>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
-          >
-            <ShoppingCart size={18} />
-            <span>View All Products</span>
-          </motion.button>
+         
         </motion.div>
       </div>
     </section>

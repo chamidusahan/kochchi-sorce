@@ -31,10 +31,8 @@ const statusStyles = {
 };
 
 const ORDER_STATUS_OPTIONS = [
-	'Pending',
 	'Confirmed',
 	'Preparing',
-	'Dispatched',
 	'Out For Delivery',
 	'Delivered',
 	'Cancelled'
@@ -43,10 +41,8 @@ const ORDER_STATUS_OPTIONS = [
 const STATUS_FILTERS = ['All', ...ORDER_STATUS_OPTIONS];
 
 const IN_PROGRESS_STATUSES = new Set([
-	'Pending',
 	'Confirmed',
 	'Preparing',
-	'Dispatched',
 	'Out For Delivery'
 ]);
 
@@ -54,7 +50,7 @@ const FULFILLED_STATUSES = new Set(['Delivered']);
 
 const Orders = () => {
 	const [orders, setOrders] = React.useState([]);
-    const [updatingId, setUpdatingId] = React.useState(null);
+	const [updatingId, setUpdatingId] = React.useState(null);
 	const [availableProducts, setAvailableProducts] = React.useState([]);
 	const [loading, setLoading] = React.useState(true);
 	const [selectedOrder, setSelectedOrder] = React.useState(null);
@@ -109,18 +105,30 @@ const Orders = () => {
 		fetchData();
 	}, []);
 
-	const updateOrderStatus = async (orderId, nextStatus) => {
+	const updateOrderStatus = async (orderId, nextStatus, options = {}) => {
+		const payload = { orderId, status: nextStatus };
+		const trackingNumber = typeof options.trackingNumber === 'string' ? options.trackingNumber.trim() : undefined;
+		if (trackingNumber) {
+			payload.trackingNumber = trackingNumber;
+		}
+
 		try {
 			setUpdatingId(orderId);
 			const res = await fetch('http://localhost/backend/admin/api/update-order-status.php', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ orderId, status: nextStatus })
+				body: JSON.stringify(payload)
 			});
 			const data = await res.json();
 			if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update');
-			// Optimistically update local state
-			setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
+			setOrders(prev => prev.map(o => {
+				if (o.id !== orderId) return o;
+				return {
+					...o,
+					status: nextStatus,
+					...(trackingNumber ? { trackingNumber } : {})
+				};
+			}));
 		} catch (e) {
 			alert(e.message || 'Failed to update order status');
 		} finally {
@@ -161,6 +169,38 @@ const Orders = () => {
 	const handleGenerateBill = (order) => {
 		setSelectedOrder(order);
 		setShowBillModal(true);
+	};
+
+	const requestTrackingNumber = (order) => {
+		const existing = order.trackingNumber || '';
+		const input = window.prompt('Enter the tracking number for this order', existing);
+		if (input === null) {
+			return null;
+		}
+		const trimmed = input.trim();
+		if (!trimmed) {
+			alert('Tracking number cannot be empty.');
+			return null;
+		}
+		return trimmed;
+	};
+
+	const handleStatusChange = (order, nextStatus, target) => {
+		if (nextStatus === order.status) {
+			return;
+		}
+
+		if (nextStatus === 'Out For Delivery') {
+			const trackingNumber = requestTrackingNumber(order);
+			if (!trackingNumber) {
+				target.value = order.status;
+				return;
+			}
+			updateOrderStatus(order.id, nextStatus, { trackingNumber });
+			return;
+		}
+
+		updateOrderStatus(order.id, nextStatus);
 	};
 
 	const handlePrintBill = () => {
@@ -506,21 +546,42 @@ const Orders = () => {
 												<td className="py-3 px-4 text-white/80">{order.items.length} item(s)</td>
 												<td className="py-3 px-4 text-white font-semibold">Rs. {order.total.toLocaleString()}</td>
 												<td className="py-3 px-4">
-													<div className="flex items-center gap-2">
-														<span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}>{order.status}</span>
-														<select
-															disabled={updatingId === order.id}
-															value={order.status}
-															onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-															className="ml-2 bg-gray-900/70 border border-gray-800 rounded-md py-1 px-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-red-500/60"
-															style={{ backgroundColor: '#0f141c', color: '#fff' }}
-														>
-															{ORDER_STATUS_OPTIONS.map(status => (
-																<option key={status} value={status} style={{ backgroundColor: '#0f141c', color: '#fff' }}>
-																	{status}
-																</option>
-															))}
-														</select>
+													<div className="flex flex-col gap-1">
+														<div className="flex flex-wrap items-center gap-2">
+															<span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}>{order.status}</span>
+															<select
+																disabled={updatingId === order.id}
+																value={order.status}
+																onChange={(e) => handleStatusChange(order, e.target.value, e.target)}
+																className="ml-2 bg-gray-900/70 border border-gray-800 rounded-md py-1 px-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-red-500/60"
+																style={{ backgroundColor: '#0f141c', color: '#fff' }}
+															>
+																{ORDER_STATUS_OPTIONS.map(status => (
+																	<option key={status} value={status} style={{ backgroundColor: '#0f141c', color: '#fff' }}>
+																		{status}
+																	</option>
+																))}
+															</select>
+															{order.status === 'Out For Delivery' && (
+																<button
+																	type="button"
+																	onClick={() => {
+																		const trackingNumber = requestTrackingNumber(order);
+																		if (!trackingNumber) {
+																			return;
+																		}
+																		updateOrderStatus(order.id, 'Out For Delivery', { trackingNumber });
+																	}}
+																	disabled={updatingId === order.id}
+																	className="ml-2 px-3 py-1 rounded-md bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-200 text-xs font-semibold transition"
+																>
+																	{order.trackingNumber ? 'Update Tracking' : 'Add Tracking'}
+																</button>
+															)}
+														</div>
+														{order.trackingNumber && (
+															<span className="text-xs text-cyan-200 font-semibold">Tracking: {order.trackingNumber}</span>
+														)}
 													</div>
 												</td>
 												<td className="py-3 px-4">
@@ -701,6 +762,11 @@ const Orders = () => {
 									<span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[selectedOrder.status] ?? statusStyles.default} print:border print:border-gray-400 print:bg-transparent print:text-gray-700 print:text-sm`}>
 										{selectedOrder.status}
 									</span>
+									{selectedOrder.trackingNumber && (
+										<p className="mt-2 text-xs font-semibold uppercase text-cyan-200 print:text-gray-600 print:text-sm">
+											Tracking: {selectedOrder.trackingNumber}
+										</p>
+									)}
 								</div>
 							</div>
 

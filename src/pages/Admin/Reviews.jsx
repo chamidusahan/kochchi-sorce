@@ -17,7 +17,7 @@ const Reviews = () => {
 		setLoading(true);
 		setError('');
 		try {
-			const response = await fetch('http://localhost/backend/admin/api/get-ratings.php', {
+			const response = await fetch('backend/admin/api/get-ratings.php', {
 				credentials: 'include',
 			});
 
@@ -50,7 +50,7 @@ const Reviews = () => {
 	const handleAction = async (ratingId, action) => {
 		setActionStates((prev) => ({ ...prev, [ratingId]: action }));
 		try {
-			const response = await fetch('http://localhost/backend/admin/api/update-rating-status.php', {
+			const response = await fetch('backend/admin/api/update-rating-status.php', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',

@@ -63,7 +63,7 @@ const Navbar = () => {
     },
     { name: "About", action: () => handleScroll("about") },
     { name: "Products", action: () => handleScroll("products") },
-    { name: "Order Now", action: () => handleScroll("delivery") },
+    
     { name: "Contact", action: () => handleScroll("contact") },
     { name: "Cart", action: () => navigate("/order"), isRed: true, icon: ShoppingCart },
   ];
@@ -106,7 +106,7 @@ const Navbar = () => {
           onClick={() => navigate("/")}
         >
           <img
-            src="/images/123.png"
+            src="/images/1234567.png"
             alt="Spice Up logo"
             className="h-14 w-14 object-contain"
           />

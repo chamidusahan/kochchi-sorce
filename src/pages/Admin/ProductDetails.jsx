@@ -21,6 +21,41 @@ const statusStyles = {
 	default: 'bg-gray-700/25 text-gray-300'
 };
 
+const BACKEND_ORIGIN = 'https://getspiceup.com/';
+
+const resolveProductImageUrl = (imagePath) => {
+	if (!imagePath) {
+		return '';
+	}
+	let normalized = imagePath.trim();
+	if (/^https?:\/\//i.test(normalized)) {
+		return normalized;
+	}
+	if (normalized.startsWith('/backend/uploads/')) {
+		normalized = normalized.replace('/backend/uploads/', '/backend/public/uploads/');
+	}
+	if (normalized.startsWith('/uploads/')) {
+		normalized = `/backend/public${normalized}`;
+	}
+	if (!normalized.startsWith('/')) {
+		normalized = `/${normalized}`;
+	}
+	return `${BACKEND_ORIGIN}${normalized}`;
+};
+
+const revokeIfObjectUrl = (url) => {
+	if (url?.startsWith('blob:')) {
+		URL.revokeObjectURL(url);
+	}
+};
+
+const formatPriceDisplay = (price) => {
+	if (typeof price === 'number' && Number.isFinite(price)) {
+		return `Rs. ${price.toLocaleString()}`;
+	}
+	return '—';
+};
+
 const formatDateIdentifier = () => {
 	const now = new Date();
 	const year = now.getFullYear();
@@ -131,7 +166,7 @@ const ProductDetails = () => {
 	React.useEffect(() => {
 		const fetchProducts = async () => {
 			try {
-				const response = await fetch('http://localhost/backend/admin/api/get-products.php');
+				const response = await fetch('backend/admin/api/get-products.php');
 				const result = await response.json();
 				
 				if (result.success) {
@@ -193,9 +228,7 @@ const ProductDetails = () => {
 
 	const handleFileSelection = React.useCallback((file) => {
 		setProductForm((prev) => {
-			if (prev.imagePreview) {
-				URL.revokeObjectURL(prev.imagePreview);
-			}
+			revokeIfObjectUrl(prev.imagePreview);
 			if (!file || !file.type?.startsWith('image/')) {
 				return { ...prev, imageFile: null, imagePreview: '' };
 			}
@@ -249,9 +282,7 @@ const ProductDetails = () => {
 	};
 
 	React.useEffect(() => () => {
-		if (productForm.imagePreview) {
-			URL.revokeObjectURL(productForm.imagePreview);
-		}
+		revokeIfObjectUrl(productForm.imagePreview);
 	}, [productForm.imagePreview]);
 
 	const handleStockChange = (event) => {
@@ -330,11 +361,11 @@ const ProductDetails = () => {
 			if (editingProductId) {
 				// Edit mode
 				formData.append('id', editingProductId);
-				url = 'http://localhost/backend/admin/api/update-product.php';
+				url = 'backend/admin/api/update-product.php';
 				method = 'POST';
 			} else {
 				// Add mode
-				url = 'http://localhost/backend/admin/api/add-product.php';
+				url = 'backend/admin/api/add-product.php';
 				method = 'POST';
 			}
 			const response = await fetch(url, {
@@ -344,7 +375,7 @@ const ProductDetails = () => {
 			const result = await response.json();
 			if (result.success) {
 				// Refresh product list
-				const productsResponse = await fetch('http://localhost/backend/admin/api/get-products.php');
+				const productsResponse = await fetch('backend/admin/api/get-products.php');
 				const productsResult = await productsResponse.json();
 				if (productsResult.success) {
 					setProductList(productsResult.data);
@@ -377,14 +408,14 @@ const ProductDetails = () => {
 		try {
 			const formData = new FormData();
 			formData.append('id', productId);
-			const response = await fetch('http://localhost/backend/admin/api/delete-product.php', {
+			const response = await fetch('backend/admin/api/delete-product.php', {
 				method: 'POST',
 				body: formData
 			});
 			const result = await response.json();
 			if (result.success) {
 				// Refresh list
-				const productsResponse = await fetch('http://localhost/backend/admin/api/get-products.php');
+				const productsResponse = await fetch('backend/admin/api/get-products.php');
 				const productsResult = await productsResponse.json();
 				if (productsResult.success) {
 					setProductList(productsResult.data);
@@ -450,7 +481,7 @@ const ProductDetails = () => {
 		setStockError('');
 		
 		try {
-			const response = await fetch('http://localhost/backend/admin/api/add-stock.php', {
+			const response = await fetch('backend/admin/api/add-stock.php', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -469,7 +500,7 @@ const ProductDetails = () => {
 			
 			if (result.success) {
 				// Refresh product list to show updated stock
-				const productsResponse = await fetch('http://localhost/backend/admin/api/get-products.php');
+				const productsResponse = await fetch('backend/admin/api/get-products.php');
 				const productsResult = await productsResponse.json();
 				
 				if (productsResult.success) {
@@ -613,12 +644,13 @@ const ProductDetails = () => {
 							<tbody>
 								{productList.map((product) => {
 									const badgeStyle = statusStyles[product.status] ?? statusStyles.default;
+									const productImageSrc = resolveProductImageUrl(product.image);
 									return (
 										<tr key={product.id} className="border-b border-gray-800/40 last:border-none">
 											<td className="py-3 px-4">
 												<div className="flex items-center gap-3">
-													{product.image ? (
-														<img src={product.image} alt={product.name} className="w-12 h-12 rounded-lg object-cover bg-gray-900/70 border border-gray-800" />
+													{productImageSrc ? (
+														<img src={productImageSrc} alt={product.name} className="w-12 h-12 rounded-lg object-cover bg-gray-900/70 border border-gray-800" />
 													) : (
 														<div className="w-12 h-12 rounded-lg bg-gray-900/70 border border-gray-800 flex items-center justify-center">
 															<Package size={20} className="text-white/40" />
@@ -631,7 +663,7 @@ const ProductDetails = () => {
 												</div>
 											</td>
 											<td className="py-3 px-4 text-white/70">{product.category}</td>
-											<td className="py-3 px-4 text-white">Rs. {product.price.toLocaleString()}</td>
+											<td className="py-3 px-4 text-white">{formatPriceDisplay(product.price)}</td>
 											<td className="py-3 px-4 text-white/80">{product.stock > 0 ? product.stock : '—'}</td>
 											<td className="py-3 px-4">
 												<span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}>
@@ -650,9 +682,12 @@ const ProductDetails = () => {
 																sku: product.sku || '',
 																category: product.category || '',
 																status: product.status || 'Draft',
-																price: product.price ? String(product.price) : '',
+																price:
+																	typeof product.price === 'number' && Number.isFinite(product.price)
+																		? String(product.price)
+																		: '',
 																imageFile: null,
-																imagePreview: product.image || ''
+																imagePreview: resolveProductImageUrl(product.image)
 															});
 															setShowProductModal(true);
 														}}
@@ -677,11 +712,13 @@ const ProductDetails = () => {
 				<aside className="bg-black/80 rounded-2xl p-4 md:p-6 shadow-lg border border-gray-800/50 space-y-5">
 					<h2 className="text-base md:text-lg font-bold text-white">Top performers</h2>
 					<ul className="space-y-4">
-						{topProducts.map((product) => (
-							<li key={`${product.id}-highlight`} className="flex items-center gap-3">
-								{product.image ? (
-									<img src={product.image} alt={product.name} className="w-14 h-14 rounded-xl object-cover bg-gray-900/70 border border-gray-800" />
-								) : (
+						{topProducts.map((product) => {
+							const highlightImage = resolveProductImageUrl(product.image);
+							return (
+								<li key={`${product.id}-highlight`} className="flex items-center gap-3">
+									{highlightImage ? (
+										<img src={highlightImage} alt={product.name} className="w-14 h-14 rounded-xl object-cover bg-gray-900/70 border border-gray-800" />
+									) : (
 									<div className="w-14 h-14 rounded-xl bg-gray-900/70 border border-gray-800 flex items-center justify-center">
 										<Package size={24} className="text-white/40" />
 									</div>
@@ -692,7 +729,8 @@ const ProductDetails = () => {
 								</div>
 								<span className="text-sm font-semibold text-white/90">{product.sales || 0} sold</span>
 							</li>
-						))}
+							);
+						})}
 					</ul>
 					<div className="bg-red-600/15 rounded-xl p-4 border border-red-700/40 text-white/80 text-sm">
 						Keep your catalogue fresh by updating photos, prices, and stock weekly.

@@ -8,7 +8,7 @@ import {
 	CheckCircle,
 	XCircle,
 	TrendingUp,
-	DollarSign,
+	Banknote,
 	ShoppingBag,
 	FileText,
 	Plus,
@@ -31,7 +31,7 @@ const statusStyles = {
 };
 
 const ORDER_STATUS_OPTIONS = [
-	'Confirmed',
+	'Pending',
 	'Preparing',
 	'Out For Delivery',
 	'Delivered',
@@ -40,13 +40,59 @@ const ORDER_STATUS_OPTIONS = [
 
 const STATUS_FILTERS = ['All', ...ORDER_STATUS_OPTIONS];
 
+const PAYMENT_METHOD_FILTERS = [
+	{ label: 'All', value: 'All' },
+	{ label: 'COD', value: 'COD' },
+	{ label: 'BT', value: 'BT' },
+	{ label: 'Card', value: 'CARD' }
+];
+
 const IN_PROGRESS_STATUSES = new Set([
-	'Confirmed',
+	'Pending',
 	'Preparing',
 	'Out For Delivery'
 ]);
 
 const FULFILLED_STATUSES = new Set(['Delivered']);
+
+const BACKEND_HOST = 'backend/public';
+
+// Ensure absolute slip links always point at the public uploads directory
+const ensurePublicUploadsPath = (absoluteUrl) => {
+	if (!absoluteUrl) {
+		return null;
+	}
+	try {
+		const parsed = new URL(absoluteUrl);
+		const { pathname } = parsed;
+		if (pathname.startsWith('/backend/public/')) {
+			return parsed.toString();
+		}
+		if (pathname.startsWith('/backend/uploads/')) {
+			parsed.pathname = pathname.replace('/backend/uploads/', '/backend/public/uploads/');
+			return parsed.toString();
+		}
+		if (pathname.startsWith('/uploads/')) {
+			parsed.pathname = `/backend/public${pathname}`;
+			return parsed.toString();
+		}
+		return parsed.toString();
+	} catch (error) {
+		console.warn('Failed to normalise payment slip URL:', error);
+		return absoluteUrl;
+	}
+};
+
+const normalizeRelativeSlipPath = (path = '') => {
+	const ensured = path.startsWith('/') ? path : `/${path}`;
+	if (ensured.startsWith('/backend/public/')) {
+		return ensured.replace('/backend/public', '');
+	}
+	if (ensured.startsWith('/backend/')) {
+		return ensured.replace('/backend', '');
+	}
+	return ensured;
+};
 
 const Orders = () => {
 	const [orders, setOrders] = React.useState([]);
@@ -59,6 +105,8 @@ const Orders = () => {
 	const [activeTab, setActiveTab] = React.useState('orders'); // 'orders' or 'bills'
 	const [myBills, setMyBills] = React.useState([]);
 	const [billFilter, setBillFilter] = React.useState('All');
+	const [statusFilter, setStatusFilter] = React.useState('All');
+	const [paymentFilter, setPaymentFilter] = React.useState('All');
 	const [quickBillForm, setQuickBillForm] = React.useState({
 		customerName: '',
 		phone: '',
@@ -73,9 +121,9 @@ const Orders = () => {
 		const fetchData = async () => {
 			try {
 				const [ordersRes, productsRes, billsRes] = await Promise.all([
-					fetch('http://localhost/backend/admin/api/get-orders.php'),
-					fetch('http://localhost/backend/admin/api/get-products.php'),
-					fetch('http://localhost/backend/admin/api/get-bills.php')
+					fetch('backend/admin/api/get-orders.php'),
+					fetch('backend/admin/api/get-products.php'),
+					fetch('backend/admin/api/get-bills.php')
 				]);
 				const ordersData = await ordersRes.json();
 				const productsData = await productsRes.json();
@@ -114,7 +162,7 @@ const Orders = () => {
 
 		try {
 			setUpdatingId(orderId);
-			const res = await fetch('http://localhost/backend/admin/api/update-order-status.php', {
+			const res = await fetch('backend/admin/api/update-order-status.php', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload)
@@ -145,7 +193,7 @@ const Orders = () => {
 		const creditBillsCount = myBills.filter(b => b.paymentMethod === 'Credit').length;
 
 		return [
-			{ label: 'Total Revenue', value: `Rs. ${totalRevenue.toLocaleString()}`, delta: 'From delivered orders', icon: DollarSign, accent: 'text-green-400', border: 'border-green-700/60' },
+			{ label: 'Total Revenue', value: `LKR. ${totalRevenue.toLocaleString()}`, delta: 'From delivered orders', icon: Banknote, accent: 'text-green-400', border: 'border-green-700/60' },
 			{ label: 'Active Orders', value: String(inProgressCount), delta: 'Awaiting fulfilment', icon: Clock, accent: 'text-amber-300', border: 'border-amber-700/60' },
 			{ label: 'Delivered', value: String(deliveredCount), delta: 'Successfully completed', icon: CheckCircle, accent: 'text-green-300', border: 'border-green-700/60' },
 			{ label: 'Credit Bills', value: String(creditBillsCount), delta: 'Payment pending', icon: FileText, accent: 'text-orange-300', border: 'border-orange-700/60' },
@@ -165,6 +213,37 @@ const Orders = () => {
 			return method === billFilter.toLowerCase();
 		});
 	}, [billFilter, myBills]);
+
+	const filteredOrders = React.useMemo(() => {
+		const normalize = (method = '') => method.trim().toLowerCase();
+		const matchers = {
+			COD: (method) => method.includes('cash') || method.includes('cod'),
+			BT: (method) => method.includes('bank') || method.includes('transfer'),
+			CARD: (method) => method.includes('card') || method.includes('online') || method.includes('visa') || method.includes('master')
+		};
+
+		return orders.filter(order => {
+			const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
+			if (!matchesStatus) {
+				return false;
+			}
+
+			if (paymentFilter === 'All') {
+				return true;
+			}
+
+			if (order.paymentMethodCode) {
+				return order.paymentMethodCode === paymentFilter;
+			}
+
+			const matcher = matchers[paymentFilter];
+			if (!matcher) {
+				return true;
+			}
+
+			return matcher(normalize(order.paymentMethod || ''));
+		});
+	}, [orders, paymentFilter, statusFilter]);
 
 	const handleGenerateBill = (order) => {
 		setSelectedOrder(order);
@@ -202,6 +281,29 @@ const Orders = () => {
 
 		updateOrderStatus(order.id, nextStatus);
 	};
+
+	const resolvePaymentSlipUrl = React.useCallback((order) => {
+		if (!order) {
+			return null;
+		}
+		const rawPath = order.paymentSlipUrl || order.paymentSlip;
+		if (!rawPath) {
+			return null;
+		}
+		if (/^https?:\/\//i.test(rawPath)) {
+			return ensurePublicUploadsPath(rawPath);
+		}
+		return `${BACKEND_HOST}${normalizeRelativeSlipPath(rawPath)}`;
+	}, []);
+
+	const handleViewSlip = React.useCallback((order) => {
+		const url = resolvePaymentSlipUrl(order);
+		if (!url) {
+			alert('Payment slip not available yet.');
+			return;
+		}
+		window.open(url, '_blank', 'noopener');
+	}, [resolvePaymentSlipUrl]);
 
 	const handlePrintBill = () => {
 		window.print();
@@ -285,7 +387,7 @@ const Orders = () => {
 			// Calculate totals
 			const { subtotal, delivery, total } = calculateQuickBillTotal();
 			
-			// Prepare order data for backend
+			// Prepare order data for 
 			const orderData = {
 				userId: null, // Walk-in customer
 				customerName: quickBillForm.customerName,
@@ -306,7 +408,7 @@ const Orders = () => {
 			};
 
 			// Save order to backend
-			const response = await fetch('http://localhost/backend/admin/api/add-order.php', {
+			const response = await fetch('backend/admin/api/add-order.php', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -344,7 +446,7 @@ const Orders = () => {
 				};
 
 				// Refresh orders list
-				const ordersRes = await fetch('http://localhost/backend/admin/api/get-orders.php');
+				const ordersRes = await fetch('backend/admin/api/get-orders.php');
 				const ordersData = await ordersRes.json();
 				if (ordersData.success) {
 					setOrders(ordersData.data);
@@ -354,7 +456,7 @@ const Orders = () => {
 				setMyBills(prev => [quickOrder, ...prev]);
 
 				try {
-					const billsRes = await fetch('http://localhost/backend/admin/api/get-bills.php');
+					const billsRes = await fetch('backend/admin/api/get-bills.php');
 					const billsData = await billsRes.json();
 					if (billsData.success) {
 						setMyBills(billsData.data);
@@ -495,16 +597,41 @@ const Orders = () => {
 				{/* Orders Tab Content */}
 				{activeTab === 'orders' && (
 					<>
-						<div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-							<h2 className="text-base md:text-lg font-bold text-white">All Customer Orders</h2>
-							<div className="flex flex-wrap gap-2">
-								{STATUS_FILTERS.map((status, index) => {
-									const baseClasses = 'px-3 py-1.5 rounded-lg text-xs';
-									const activeClasses = 'bg-red-600/20 text-red-300 font-semibold';
-									const inactiveClasses = 'bg-gray-800/80 text-white/70';
+						<div className="space-y-4 mb-4">
+							<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+								<h2 className="text-base md:text-lg font-bold text-white">All Customer Orders</h2>
+								<div className="flex flex-wrap gap-2">
+									{STATUS_FILTERS.map((status) => {
+										const isActive = statusFilter === status;
+										const activeClasses = 'bg-red-600/20 text-red-300 font-semibold border border-red-500/40';
+										const inactiveClasses = 'bg-gray-800/80 text-white/70 border border-gray-800 hover:text-white/90';
+										return (
+											<button
+												key={status}
+												onClick={() => setStatusFilter(status)}
+												className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${isActive ? activeClasses : inactiveClasses}`}
+												aria-pressed={isActive}
+											>
+												{status}
+											</button>
+										);
+									})}
+								</div>
+							</div>
+							<div className="flex flex-wrap items-center gap-2">
+								<span className="text-xs font-semibold uppercase tracking-wide text-white/60">Payment</span>
+								{PAYMENT_METHOD_FILTERS.map(({ label, value }) => {
+									const isActive = paymentFilter === value;
+									const activeClasses = 'bg-green-600/20 text-green-300 border border-green-500/40';
+									const inactiveClasses = 'bg-gray-800/80 text-white/70 border border-gray-800 hover:text-white/90';
 									return (
-										<button key={status} className={`${baseClasses} ${index === 0 ? activeClasses : inactiveClasses}`}>
-											{status}
+										<button
+											key={value}
+											onClick={() => setPaymentFilter(value)}
+											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${isActive ? activeClasses : inactiveClasses}`}
+											aria-pressed={isActive}
+										>
+											{label}
 										</button>
 									);
 								})}
@@ -519,58 +646,89 @@ const Orders = () => {
 										<th className="py-3 px-4 font-medium">Date</th>
 										<th className="py-3 px-4 font-medium">Items</th>
 										<th className="py-3 px-4 font-medium">Total</th>
+										<th className="py-3 px-4 font-medium">Payment</th>
 										<th className="py-3 px-4 font-medium">Status</th>
 										<th className="py-3 px-4 font-medium text-right">Actions</th>
 									</tr>
 								</thead>
 								<tbody>
-									{orders.map((order) => {
-										const badgeStyle = statusStyles[order.status] ?? statusStyles.default;
-										return (
-											<tr key={order.id} className="border-b border-gray-800/40 last:border-none">
-												<td className="py-3 px-4">
-													<span className="font-semibold text-white">{order.id}</span>
-												</td>
-												<td className="py-3 px-4">
-													<div>
-														<p className="font-semibold text-white">{order.customerName}</p>
-														<span className="text-xs text-white/50">{order.email}</span>
-													</div>
-												</td>
-												<td className="py-3 px-4 text-white/70">
-													<div>
-														<p>{order.date}</p>
-														<span className="text-xs text-white/50">{order.time}</span>
-													</div>
-												</td>
-												<td className="py-3 px-4 text-white/80">{order.items.length} item(s)</td>
-												<td className="py-3 px-4 text-white font-semibold">Rs. {order.total.toLocaleString()}</td>
-												<td className="py-3 px-4">
-													<div className="flex flex-col gap-1">
-														<div className="flex flex-wrap items-center gap-2">
-															<span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}>{order.status}</span>
-															<select
-																disabled={updatingId === order.id}
-																value={order.status}
-																onChange={(e) => handleStatusChange(order, e.target.value, e.target)}
-																className="ml-2 bg-gray-900/70 border border-gray-800 rounded-md py-1 px-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-red-500/60"
-																style={{ backgroundColor: '#0f141c', color: '#fff' }}
-															>
-																{ORDER_STATUS_OPTIONS.map(status => (
-																	<option key={status} value={status} style={{ backgroundColor: '#0f141c', color: '#fff' }}>
-																		{status}
-																	</option>
-																))}
-															</select>
-															{order.status === 'Out For Delivery' && (
-																<button
-																	type="button"
-																	onClick={() => {
-																		const trackingNumber = requestTrackingNumber(order);
-																		if (!trackingNumber) {
-																			return;
-																		}
-																		updateOrderStatus(order.id, 'Out For Delivery', { trackingNumber });
+									{filteredOrders.length === 0 ? (
+										<tr>
+											<td colSpan="7" className="py-12 text-center text-white/50">
+												<ShoppingBag size={48} className="mx-auto mb-3 text-white/30" />
+												<p className="text-base font-semibold">No orders for this payment type</p>
+												<p className="text-sm mt-1">Try picking another payment filter to see more orders</p>
+											</td>
+										</tr>
+									) : (
+										filteredOrders.map((order) => {
+											const badgeStyle = statusStyles[order.status] ?? statusStyles.default;
+											const isBankTransfer = order.paymentMethodCode === 'BT' || (order.paymentMethod || '').toLowerCase().includes('bank');
+											const slipUrl = resolvePaymentSlipUrl(order);
+											return (
+												<tr key={order.id} className="border-b border-gray-800/40 last:border-none">
+													<td className="py-3 px-4">
+														<span className="font-semibold text-white">{order.id}</span>
+													</td>
+													<td className="py-3 px-4">
+														<div>
+															<p className="font-semibold text-white">{order.customerName}</p>
+															<span className="text-xs text-white/50">{order.email}</span>
+														</div>
+													</td>
+													<td className="py-3 px-4 text-white/70">
+														<div>
+															<p>{order.date}</p>
+															<span className="text-xs text-white/50">{order.time}</span>
+														</div>
+													</td>
+													<td className="py-3 px-4 text-white/80">{order.items.length} item(s)</td>
+													<td className="py-3 px-4 text-white font-semibold">Rs. {order.total.toLocaleString()}</td>
+													<td className="py-3 px-4">
+														<div className="flex flex-col gap-1 text-white/80">
+															<span className="font-semibold text-white">{order.paymentMethod || '—'}</span>
+															{isBankTransfer && (
+																slipUrl ? (
+																	<button
+																		type="button"
+																		onClick={() => handleViewSlip(order)}
+																		className="inline-flex items-center gap-1 text-xs font-semibold text-amber-200 hover:text-white"
+																	>
+																		<Eye size={14} />
+																		<span>View Slip</span>
+																	</button>
+																) : (
+																	<span className="text-xs text-amber-300">Awaiting slip upload</span>
+																)
+															)}
+														</div>
+													</td>
+													<td className="py-3 px-4">
+														<div className="flex flex-col gap-1">
+															<div className="flex flex-wrap items-center gap-2">
+																<span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle}`}>{order.status}</span>
+																<select
+																	disabled={updatingId === order.id}
+																	value={order.status}
+																	onChange={(e) => handleStatusChange(order, e.target.value, e.target)}
+																	className="ml-2 bg-gray-900/70 border border-gray-800 rounded-md py-1 px-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-red-500/60"
+																	style={{ backgroundColor: '#0f141c', color: '#fff' }}
+																>
+																	{ORDER_STATUS_OPTIONS.map(status => (
+																		<option key={status} value={status} style={{ backgroundColor: '#0f141c', color: '#fff' }}>
+																			{status}
+																		</option>
+																	))}
+																</select>
+																{order.status === 'Out For Delivery' && (
+																	<button
+																		type="button"
+																		onClick={() => {
+																			const trackingNumber = requestTrackingNumber(order);
+																			if (!trackingNumber) {
+																				return;
+																			}
+																			updateOrderStatus(order.id, 'Out For Delivery', { trackingNumber });
 																	}}
 																	disabled={updatingId === order.id}
 																	className="ml-2 px-3 py-1 rounded-md bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-200 text-xs font-semibold transition"
@@ -601,7 +759,8 @@ const Orders = () => {
 												</td>
 											</tr>
 										);
-									})}
+									})
+									)}
 								</tbody>
 							</table>
 						</div>
@@ -762,6 +921,19 @@ const Orders = () => {
 									<span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[selectedOrder.status] ?? statusStyles.default} print:border print:border-gray-400 print:bg-transparent print:text-gray-700 print:text-sm`}>
 										{selectedOrder.status}
 									</span>
+									{selectedOrder.paymentMethodCode === 'BT' && (
+										resolvePaymentSlipUrl(selectedOrder) ? (
+											<button
+												onClick={() => handleViewSlip(selectedOrder)}
+												className="mt-3 inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-200 hover:text-white print:hidden"
+											>
+												<Eye size={14} />
+												<span>View Slip</span>
+											</button>
+										) : (
+											<p className="mt-3 text-xs font-semibold uppercase text-amber-200">Awaiting payment slip</p>
+										)
+									)}
 									{selectedOrder.trackingNumber && (
 										<p className="mt-2 text-xs font-semibold uppercase text-cyan-200 print:text-gray-600 print:text-sm">
 											Tracking: {selectedOrder.trackingNumber}

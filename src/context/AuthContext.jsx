@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshSession = React.useCallback(async () => {
     try {
-      const res = await fetchWithCredentials('http://localhost/backend/user/check-session.php');
+      const res = await fetchWithCredentials('backend/user/check-session.php');
       if (!res.ok) {
         setUser(null);
         return;
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
   const login = React.useCallback(
     async (email, password) => {
       setError(null);
-      const res = await fetchWithCredentials('http://localhost/backend/user/login.php', {
+      const res = await fetchWithCredentials('backend/user/login.php', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   const signup = React.useCallback(
     async (payload) => {
       setError(null);
-      const res = await fetchWithCredentials('http://localhost/backend/user/signup.php', {
+      const res = await fetchWithCredentials('backend/user/signup.php', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = React.useCallback(async () => {
     try {
-      await fetchWithCredentials('http://localhost/backend/user/logout.php', { method: 'POST' });
+      await fetchWithCredentials('backend/user/logout.php', { method: 'POST' });
     } finally {
       setUser(null);
       setLoading(false);

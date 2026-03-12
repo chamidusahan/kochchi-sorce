@@ -38,7 +38,7 @@ const AboutSection = () => {
           >
             <div className="relative overflow-hidden rounded-lg shadow-xl shadow-red-900/20">
               <img
-                src="/images/banner.jpg"
+                src="/images/banners/b3.jpeg"
                 alt="Nai Kochchi (Cobra Chili)"
                 className="w-full h-auto rounded-lg"
               />

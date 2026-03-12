@@ -4,13 +4,6 @@ import { Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
-// Assumptions:
-// - Backend endpoints exist at:
-//   POST http://localhost/backend/user/submit-rating.php (JSON: { rating, comment })
-//   GET  http://localhost/backend/user/get-ratings.php
-// - Session check endpoint: http://localhost/backend/user/check-session.php
-// If not yet created, copy the PHP code samples I'll provide separately.
-
 const RatingsSection = () => {
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +26,7 @@ const RatingsSection = () => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const ratingsRes = await fetch(`http://localhost/backend/user/get-ratings.php?_t=${Date.now()}`, {
+        const ratingsRes = await fetch(`backend/user/get-ratings.php?_t=${Date.now()}`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -109,7 +102,7 @@ const RatingsSection = () => {
   // Helper to refresh ratings from server
   const refreshRatings = async () => {
     try {
-      const res = await fetch(`http://localhost/backend/user/get-ratings.php?_t=${Date.now()}`, {
+      const res = await fetch(`backend/user/get-ratings.php?_t=${Date.now()}`, {
         method: 'GET',
         credentials: 'include'
       });
@@ -144,7 +137,7 @@ const RatingsSection = () => {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('http://localhost/backend/user/submit-rating.php', {
+      const res = await fetch('backend/user/submit-rating.php', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -177,7 +170,7 @@ const RatingsSection = () => {
     const ok = window.confirm('Delete this review?');
     if (!ok) return;
     try {
-      const res = await fetch('http://localhost/backend/user/delete-rating.php', {
+      const res = await fetch('backend/user/delete-rating.php', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

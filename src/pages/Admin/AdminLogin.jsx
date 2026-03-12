@@ -16,7 +16,7 @@ const AdminLogin = () => {
     let cancelled = false;
     const check = async () => {
       try {
-        const res = await fetch('http://localhost/backend/admin/check-session.php', { credentials: 'include' });
+        const res = await fetch('backend/admin/check-session.php', { credentials: 'include' });
         if (!cancelled && res.ok) {
           const data = await res.json();
             if (data?.authenticated) navigate(from, { replace: true });
@@ -33,7 +33,7 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost/backend/admin/login.php', {
+      const res = await fetch('backend/admin/login.php', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

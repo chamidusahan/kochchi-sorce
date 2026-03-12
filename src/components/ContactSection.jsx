@@ -1,6 +1,20 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Phone, Mail, MapPin, Facebook, Instagram, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+
+const WhatsAppIcon = ({ size = 20, className = '' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M12 2.25c-5.376 0-9.75 4.128-9.75 9.21 0 1.79.516 3.5 1.496 4.997L3 21.75l5.494-1.684c1.084.358 2.229.545 3.39.545 5.376 0 9.75-4.128 9.75-9.21S17.376 2.25 12 2.25Zm4.722 12.08c-.236.67-1.289 1.26-1.789 1.328-.458.064-1.089.095-1.777-.112-.958-.29-2.199-.71-3.76-2.073-1.414-1.248-2.307-2.786-2.582-3.249-.275-.462-.605-1.32-.605-1.32s-.15-.36-.15-.688c0-.326.177-.512.277-.652s.225-.317.376-.36c.152-.043.337-.062.543-.043s.417.03.645.494.764 1.665.832 1.78c.067.115.112.252.041.406-.072.154-.109.252-.218.387s-.27.305-.115.592c.154.287.704 1.172 1.5 1.909.934.828 1.686 1.085 1.929 1.198s.4.048.534-.072c.135-.12.573-.626.728-.87s.313-.18.526-.109c.214.072 1.358.639 1.358.639.2.092.33.14.377.218.046.077.071.61-.165 1.28Z" />
+  </svg>
+)
 
 const ContactSection = () => {
   const [formValues, setFormValues] = React.useState({
@@ -30,7 +44,7 @@ const ContactSection = () => {
 
     setSubmitting(true)
     try {
-      const response = await fetch('http://localhost/backend/user/api/submit-contact-message.php', {
+      const response = await fetch('backend/user/api/submit-contact-message.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formValues)
@@ -89,7 +103,10 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-lg">Phone</h4>
-                  <p className="text-gray-300">+94 77 123 4567</p>
+                  <div className="text-gray-300">
+                    <p>074 084 1035</p>
+                    <p>071 730 5334</p>
+                  </div>
                 </div>
               </div>
               {/* Email */}
@@ -110,7 +127,7 @@ const ContactSection = () => {
                 <div>
                   <h4 className="font-bold text-lg">Address</h4>
                   <p className="text-gray-300">
-                    123 Spice Road, Colombo, Sri Lanka
+                      Spice Up - 10/A, Sandananagama, Dunkannawa
                   </p>
                 </div>
               </div>
@@ -125,8 +142,14 @@ const ContactSection = () => {
                 <a href="#" className="bg-red-900/30 p-3 rounded-full hover:bg-red-600/30 transition-colors">
                   <Instagram className="text-red-500" size={20} />
                 </a>
-                <a href="#" className="bg-red-900/30 p-3 rounded-full hover:bg-red-600/30 transition-colors">
-                  <Twitter className="text-red-500" size={20} />
+                <a
+                  href="https://wa.me/94740841035"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-red-900/30 p-3 rounded-full hover:bg-red-600/30 transition-colors"
+                  aria-label="Chat on WhatsApp"
+                >
+                  <WhatsAppIcon className="text-green-400" size={20} />
                 </a>
               </div>
             </div>

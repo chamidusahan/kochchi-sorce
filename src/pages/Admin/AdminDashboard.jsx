@@ -39,7 +39,7 @@ const AdminDashboard = () => {
 		const fetchDashboardData = async () => {
 			try {
 				setLoading(true);
-				const response = await fetch('http://localhost/backend/admin/api/get-dashboard-stats.php', {
+				const response = await fetch('backend/admin/api/get-dashboard-stats.php', {
 					method: 'GET',
 					credentials: 'include'
 				});
@@ -339,7 +339,7 @@ const AdminDashboard = () => {
 				<button
 					onClick={async () => {
 						try {
-							await fetch('http://localhost/backend/admin/logout.php', { method: 'POST', credentials: 'include' });
+							await fetch('backend/admin/logout.php', { method: 'POST', credentials: 'include' });
 						} finally {
 							window.location.href = '/admin-login';
 						}
@@ -389,7 +389,7 @@ const AdminDashboard = () => {
 				<button
 					onClick={async () => {
 						try {
-							await fetch('http://localhost/backend/admin/logout.php', { method: 'POST', credentials: 'include' });
+							await fetch('backend/admin/logout.php', { method: 'POST', credentials: 'include' });
 						} finally {
 							window.location.href = '/admin-login';
 						}

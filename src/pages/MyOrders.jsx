@@ -25,7 +25,7 @@ const MyOrders = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("http://localhost/backend/user/api/get-my-orders.php", {
+      const res = await fetch("backend/user/api/get-my-orders.php", {
         method: "GET",
         credentials: "include",
       });
@@ -54,7 +54,7 @@ const MyOrders = () => {
     }
 
     try {
-      const res = await fetch("http://localhost/backend/user/api/cancel-order.php", {
+      const res = await fetch("backend/user/api/cancel-order.php", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -95,17 +95,18 @@ const MyOrders = () => {
 
   const getStatusBadge = (status) => {
     const styles = {
-      Confirmed: "bg-amber-700/25 text-amber-200 border-amber-500/40",
+      Pending: "bg-amber-700/25 text-amber-200 border-amber-500/40",
       Preparing: "bg-blue-700/25 text-blue-200 border-blue-500/40",
       "Out For Delivery": "bg-purple-700/25 text-purple-200 border-purple-500/40",
       Delivered: "bg-green-700/25 text-green-300 border-green-500/40",
       Cancelled: "bg-red-700/25 text-red-200 border-red-500/40",
+      Confirmed: "bg-amber-700/25 text-amber-200 border-amber-500/40"
     };
     return styles[status] || "bg-gray-700/25 text-gray-300 border-gray-500/40";
   };
 
   const canCancelOrder = (status) => {
-    const cancellableStatuses = ["Confirmed", "Preparing"];
+    const cancellableStatuses = ["Pending", "Preparing", "Confirmed"];
     return cancellableStatuses.includes(status);
   };
 
@@ -181,19 +182,19 @@ const MyOrders = () => {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-xl font-bold text-white">Order #{order.orderId}</h3>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(
-                          order.paymentStatus
-                        )}`}
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(
+                            order.orderStatus
+                          )}`}
                       >
-                        {order.paymentStatus}
+                        {order.orderStatus}
                       </span>
                       {order.trackingNumber && (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-600/20 text-cyan-200 border border-cyan-400/40">
                           Tracking #{order.trackingNumber}
                         </span>
                       )}
-                      {canCancelOrder(order.paymentStatus) && (
+                      {canCancelOrder(order.orderStatus) && (
                         <button
                           onClick={() => cancelOrder(order.orderId)}
                           className="px-3 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 text-xs font-semibold transition-colors border border-red-500/40"

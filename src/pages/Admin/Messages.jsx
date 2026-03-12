@@ -48,7 +48,7 @@ const Messages = () => {
         setLoading(true);
         setError('');
         try {
-            const response = await fetch('http://localhost/backend/admin/api/get-messages.php', {
+            const response = await fetch('backend/admin/api/get-messages.php', {
                 credentials: 'include'
             });
             const data = await response.json();
@@ -70,7 +70,7 @@ const Messages = () => {
     const markAsRead = async (messageId) => {
         setUpdatingId(messageId);
         try {
-            const response = await fetch('http://localhost/backend/admin/api/update-message-status.php', {
+            const response = await fetch('backend/admin/api/update-message-status.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -98,7 +98,7 @@ const Messages = () => {
         }
         setDeletingId(messageId);
         try {
-            const response = await fetch('http://localhost/backend/admin/api/delete-message.php', {
+            const response = await fetch('backend/admin/api/delete-message.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

@@ -88,7 +88,7 @@
     };
 
     const handleGoogleLogin = () => {
-      window.location.href = "http://localhost/backend/user/google-login.php";
+      window.location.href = "backend/user/google-login.php";
     };
 
     const alertText = message?.text ?? (mode === "login" ? error : null);

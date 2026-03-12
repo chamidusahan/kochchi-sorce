@@ -11,7 +11,7 @@ const ProtectedRoute = ({ children }) => {
 		let cancelled = false;
 		const check = async () => {
 			try {
-				const res = await fetch('http://localhost/backend/admin/check-session.php', {
+				const res = await fetch('backend/admin/check-session.php', {
 					credentials: 'include',
 				});
 				if (!cancelled) {

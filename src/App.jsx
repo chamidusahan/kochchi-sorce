@@ -1,7 +1,8 @@
 import {
   BrowserRouter as Router,
   Routes,
-  Route
+  Route,
+  Navigate
 } from "react-router-dom";
 
 import Navbar from './components/Navbar';
@@ -16,6 +17,8 @@ import LoginSignup from "./pages/LoginSignup";
 import OrderNow from "./pages/OrderNow";
 import MyOrders from "./pages/MyOrders";
 import AboutUs from "./pages/AboutUs";
+import SingleProduct from "./pages/SingleProduct";
+import ExpressCheckout from "./pages/ExpressCheckout";
 import { useEffect } from "react";
 import AdminLogin from "./pages/Admin/AdminLogin";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -41,10 +44,13 @@ function App() {
           } />
           <Route path="/login" element={<><Navbar /><LoginSignup /></>} />
           <Route path="/order" element={<><Navbar /><OrderNow /></>} />
+          <Route path="/checkout/:productId?" element={<><Navbar /><ExpressCheckout /><Footer /></>} />
           <Route path="/my-orders" element={<><Navbar /><MyOrders /></>} />
           <Route path="/about" element={<><Navbar /><AboutUs /><Footer /></>} />
+          <Route path="/products/:productId" element={<><Navbar /><SingleProduct /><Footer /></>} />
 
           {/*admin routes*/} 
+          <Route path="/admin" element={<Navigate to="/admin-login" replace />} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route
             path="/admin-dashboard"

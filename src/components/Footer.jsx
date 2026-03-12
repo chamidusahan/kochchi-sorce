@@ -50,19 +50,24 @@ const Footer = () => {
             <div className="mt-8 space-y-4 text-sm text-gray-300">
               <div className="flex items-center gap-3">
                 <Mail className="text-red-400" size={18} />
-                <a href="mailto:hello@spiceuphot.com" className="hover:text-red-400 transition-colors">
-                  hello@spiceuphot.com
-                </a>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="text-red-400" size={18} />
-                <a href="tel:+94771234567" className="hover:text-red-400 transition-colors">
-                  +94 77 123 4567
+                <a href="mailto:info@spiceup.lk" className="hover:text-red-400 transition-colors">
+                  info@spiceup.com
                 </a>
               </div>
               <div className="flex items-start gap-3">
+                <Phone className="text-red-400 mt-0.5" size={18} />
+                <div className="flex flex-col">
+                  <a href="tel:+94740841035" className="hover:text-red-400 transition-colors">
+                    074 084 1035
+                  </a>
+                  <a href="tel:+94717305334" className="hover:text-red-400 transition-colors">
+                    071 730 5334
+                  </a>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
                 <MapPin className="text-red-400 mt-0.5" size={18} />
-                <span>212 Flame Avenue, Colombo 05, Sri Lanka</span>
+                <span>Spice Up – 10/A, Sandananagama, Dunkannawa</span>
               </div>
               <div className="flex items-center gap-3">
                 <Clock className="text-red-400" size={18} />

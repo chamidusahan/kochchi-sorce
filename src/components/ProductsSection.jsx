@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Truck } from 'lucide-react';
+import { ArrowRight, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import {
+  ensureAbsoluteBackendUrl,
+  mapActiveProducts,
+} from '../utils/productUtils';
 
-const ProductCard = ({ product, index, quantity, onIncrement, onDecrement }) => {
+const ProductCard = ({ product, index, onSelect }) => {
   const isOutOfStock = typeof product.stock === 'number' && product.stock <= 0;
-  const canIncrement = !isOutOfStock && (typeof product.stock !== 'number' || quantity < product.stock);
-  const canDecrement = quantity > 0;
 
   return (
     <motion.div
@@ -44,29 +46,15 @@ const ProductCard = ({ product, index, quantity, onIncrement, onDecrement }) => 
               {isOutOfStock ? 'Out of stock' : `${product.stock} in stock`}
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <motion.button
-              type="button"
-              whileTap={canDecrement ? { scale: 0.9 } : undefined}
-              onClick={onDecrement}
-              disabled={!canDecrement}
-              className={`w-9 h-9 rounded-full border border-red-500 text-red-400 hover:text-white hover:bg-red-600 transition ${canDecrement ? '' : 'opacity-40 cursor-not-allowed'}`}
-            >
-              -
-            </motion.button>
-            <span className="w-8 text-center text-lg font-semibold text-white">
-              {quantity}
-            </span>
-            <motion.button
-              type="button"
-              whileTap={canIncrement ? { scale: 0.9 } : undefined}
-              onClick={onIncrement}
-              disabled={!canIncrement}
-              className={`w-9 h-9 rounded-full bg-red-600 text-white hover:bg-red-500 transition ${canIncrement ? '' : 'opacity-40 cursor-not-allowed'}`}
-            >
-              +
-            </motion.button>
-          </div>
+          <motion.button
+            type="button"
+            onClick={onSelect}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center space-x-2 bg-red-600/20 text-red-200 hover:bg-red-600 hover:text-white px-4 py-2 rounded-full transition"
+          >
+            <span>View Details</span>
+            <ArrowRight size={16} />
+          </motion.button>
         </div>
       </div>
       <motion.div
@@ -87,7 +75,6 @@ const ProductCard = ({ product, index, quantity, onIncrement, onDecrement }) => 
 const ProductsSection = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
-  const [cartQuantities, setCartQuantities] = useState({});
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
 
@@ -99,7 +86,8 @@ const ProductsSection = () => {
       setFetchError('');
 
       try {
-        const response = await fetch('http://localhost/backend/admin/api/get-products.php', {
+        const endpoint = ensureAbsoluteBackendUrl('/backend/admin/api/get-products.php');
+        const response = await fetch(endpoint, {
           signal: controller.signal,
         });
         const payload = await response.json();
@@ -108,40 +96,7 @@ const ProductsSection = () => {
           throw new Error(payload.message || 'Failed to load products');
         }
 
-        const normalizedProducts = (payload.data || [])
-          .filter((item) => (item.status || '').toLowerCase() !== 'inactive')
-          .map((item) => {
-            const parsedPrice = Number.parseFloat(item.price);
-            const parsedStock = Number.parseInt(item.stock, 10);
-            const rawImage = (item.image || '').trim();
-            const imagePath = rawImage.startsWith('http')
-              ? rawImage
-              : rawImage
-                ? `http://localhost/backend${rawImage.startsWith('/') ? '' : '/'}${rawImage}`
-                : '';
-
-            return {
-              id: item.id,
-              name: item.name || 'Unnamed product',
-              price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
-              image: imagePath ,
-              description: item.category ? `Category: ${item.category}` : 'Authentic flavors, crafted for heat lovers.',
-              category: item.sku ? `SKU: ${item.sku}` : item.category || '',
-              stock: Number.isFinite(parsedStock) ? Math.max(parsedStock, 0) : 0,
-            };
-          });
-
-        setProducts(normalizedProducts);
-        setCartQuantities((prev) => {
-          const next = {};
-          normalizedProducts.forEach((product) => {
-            const persistedQuantity = prev[product.id] || 0;
-            next[product.id] = typeof product.stock === 'number'
-              ? Math.min(persistedQuantity, product.stock)
-              : persistedQuantity;
-          });
-          return next;
-        });
+        setProducts(mapActiveProducts(payload.data || []));
       } catch (error) {
         if (error.name === 'AbortError') {
           return;
@@ -149,7 +104,6 @@ const ProductsSection = () => {
 
         console.error('Failed to load products', error);
         setProducts([]);
-        setCartQuantities({});
         setFetchError('Unable to load products right now. Please try again soon.');
       } finally {
         if (!controller.signal.aborted) {
@@ -163,46 +117,15 @@ const ProductsSection = () => {
     return () => controller.abort();
   }, []);
 
-  const handleIncrement = (id) => {
-    const product = products.find((item) => item.id === id);
-    if (!product) {
-      return;
-    }
-
-    setCartQuantities((prev) => ({
-      ...prev,
-      [id]: (() => {
-        const nextValue = (prev[id] || 0) + 1;
-        if (typeof product.stock === 'number' && nextValue > product.stock) {
-          return prev[id] || 0;
-        }
-        return nextValue;
-      })(),
-    }));
-  };
-
-  const handleDecrement = (id) => {
-    setCartQuantities((prev) => ({
-      ...prev,
-      [id]: Math.max((prev[id] || 0) - 1, 0),
-    }));
-  };
-
-  const selectedItems = useMemo(() => (
-    products
-      .filter((product) => (cartQuantities[product.id] || 0) > 0)
-      .map((product) => ({
-        ...product,
-        quantity: cartQuantities[product.id],
-      }))
-  ), [cartQuantities, products]);
-
-  const hasItems = selectedItems.length > 0;
   const showProducts = !loading && !fetchError && products.length > 0;
 
-  const handleAddToCart = () => {
-    if (!hasItems) return;
-    navigate('/order', { state: { cartItems: selectedItems } });
+  const handleSelectProduct = (product) => {
+    navigate(`/products/${product.id}`, {
+      state: {
+        product,
+        allProducts: products,
+      },
+    });
   };
   
   return (
@@ -238,34 +161,13 @@ const ProductsSection = () => {
                 key={product.id}
                 product={product}
                 index={index}
-                quantity={cartQuantities[product.id] || 0}
-                onIncrement={() => handleIncrement(product.id)}
-                onDecrement={() => handleDecrement(product.id)}
+                onSelect={() => handleSelectProduct(product)}
               />
             ))}
           {!loading && !fetchError && products.length === 0 && (
             <div className="col-span-full text-center text-gray-400">No products available.</div>
           )}
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          viewport={{ once: true }}
-          className="flex justify-center mt-12"
-        >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleAddToCart}
-            disabled={!hasItems}
-            className={`bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 text-white px-8 py-4 rounded-xl flex items-center space-x-3 transition shadow-lg shadow-red-900/40 text-lg font-semibold ${hasItems ? '' : 'opacity-40 cursor-not-allowed hover:brightness-100'}`}
-          >
-            <ShoppingCart size={22} />
-            <span>Add to Cart</span>
-          </motion.button>
-        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}

@@ -284,6 +284,7 @@ const OrderNow = () => {
 
       const payload = {
         totalAmount: total,
+        customerName: form.name,
         paymentMethod: form.paymentMethod, // 'COD' | 'VISA' -> server maps to DB enum
         orderStatus: 'Pending',
         shippingPhone: form.phone,
@@ -292,7 +293,8 @@ const OrderNow = () => {
         district: form.district,
         postalCode: form.postalCode,
         items: itemsPayload,
-        ...(paymentProof ? { paymentProof, paymentProofName: slipFile.name } : {}),
+        ...(form.paymentMethod === "BT" && paymentProof ?  {
+           paymentProof, paymentProofName: slipFile.name } : {}),
       };
 
       const res = await fetch(`${API_BASE_URL}/backend/user/api/create-order.php`, {
